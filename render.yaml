@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ledger-server
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: ledger-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

@@ -1,0 +1,21 @@
+{
+  "name": "ledger-server",
+  "version": "1.0.0",
+  "description": "Ledger CRM & Loan Management - real-time multi-user backend",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "lowdb": "^1.0.0",
+    "socket.io": "^4.8.3",
+    "uuid": "^9.0.1"
+  }
+}

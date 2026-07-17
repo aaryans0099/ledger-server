@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Ledger — Live</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+
+:root{
+  --ink:#14213D; --ink-2:#1c2c50;
+  --paper:#F6F3EC; --paper-alt:#EFEBE0; --card:#FFFFFF;
+  --line:#D8D2C4; --line-soft:#e8e3d6;
+  --emerald:#1F6F54; --emerald-bg:#E4F0EA;
+  --amber:#B8863B; --amber-bg:#F7EEDD;
+  --rust:#A6432D; --rust-bg:#F6E6E1;
+  --slate:#6B7280;
+  --charcoal:#23262B;
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-body);
+  background:var(--paper);
+  color:var(--charcoal);
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+a{color:inherit;}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+::selection{background:var(--amber-bg);}
+
+/* ---------- Login ---------- */
+.login-wrap{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:
+    linear-gradient(var(--ink),var(--ink)) ;
+  padding:20px;
+}
+.login-card{
+  background:var(--paper);width:100%;max-width:400px;border-radius:4px;
+  padding:40px 36px;box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  border-top:6px solid var(--amber);
+}
+.login-brand{font-family:var(--font-display);font-size:28px;color:var(--ink);margin:0 0 2px;letter-spacing:0.3px;}
+.login-sub{color:var(--slate);font-size:13px;margin:0 0 28px;letter-spacing:0.4px;text-transform:uppercase;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;color:var(--slate);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;}
+.field input,.field select,.field textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:3px;
+  background:var(--card);font-size:14.5px;color:var(--charcoal);
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--ink-2);outline-offset:0;border-color:var(--ink-2);}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 18px;border-radius:3px;border:1px solid transparent;
+  font-size:14px;font-weight:600;letter-spacing:0.2px;
+}
+.btn-primary{background:var(--ink);color:#fff;}
+.btn-primary:hover{background:var(--ink-2);}
+.btn-block{width:100%;}
+.btn-outline{background:transparent;border-color:var(--line);color:var(--charcoal);}
+.btn-outline:hover{border-color:var(--ink);}
+.btn-danger{background:var(--rust);color:#fff;}
+.btn-danger-outline{background:var(--rust-bg);color:var(--rust);border-color:var(--rust-bg);}
+.btn-sm{padding:6px 12px;font-size:12.5px;}
+.login-error{background:var(--rust-bg);color:var(--rust);padding:10px 12px;border-radius:3px;font-size:13px;margin-bottom:16px;}
+.login-hint{margin-top:22px;font-size:12px;color:var(--slate);text-align:center;line-height:1.6;}
+
+/* ---------- Shell ---------- */
+.shell{display:flex;min-height:100vh;}
+.sidebar{
+  width:230px;background:var(--ink);color:#EDEBE3;flex-shrink:0;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+}
+.sidebar-brand{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.12);}
+.sidebar-brand .name{font-family:var(--font-display);font-size:19px;margin:0;}
+.sidebar-brand .co{font-size:11px;color:#B8B4A8;text-transform:uppercase;letter-spacing:0.6px;margin-top:4px;}
+.nav-list{list-style:none;margin:0;padding:14px 10px;flex:1;overflow-y:auto;}
+.nav-item{margin-bottom:2px;}
+.nav-link{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:4px;
+  color:#D8D5CA;text-decoration:none;font-size:14px;background:none;border:none;width:100%;text-align:left;
+}
+.nav-link svg{flex-shrink:0;opacity:0.85;}
+.nav-link:hover{background:rgba(255,255,255,0.07);}
+.nav-link.active{background:rgba(255,255,255,0.14);color:#fff;font-weight:600;}
+.sidebar-foot{padding:14px 20px;border-top:1px solid rgba(255,255,255,0.12);}
+.user-chip{font-size:12.5px;color:#D8D5CA;margin-bottom:8px;}
+.user-chip .role{display:inline-block;background:rgba(255,255,255,0.12);padding:1px 7px;border-radius:10px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.4px;margin-left:6px;}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  background:var(--card);border-bottom:1px solid var(--line);
+  padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;
+}
+.topbar h1{font-family:var(--font-display);font-size:21px;margin:0;color:var(--ink);}
+.topbar .crumbs{font-size:12px;color:var(--slate);margin-top:2px;text-transform:uppercase;letter-spacing:0.4px;}
+.content{padding:26px 28px 60px;flex:1;}
+
+/* ---------- Stat cards / dashboard ---------- */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:26px;}
+.stat-card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:16px 18px;border-left:4px solid var(--ink);}
+.stat-card .label{font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;color:var(--slate);}
+.stat-card .value{font-family:var(--font-mono);font-size:24px;font-weight:700;margin-top:6px;color:var(--ink);}
+.stat-card.emerald{border-left-color:var(--emerald);}
+.stat-card.amber{border-left-color:var(--amber);}
+.stat-card.rust{border-left-color:var(--rust);}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:5px;margin-bottom:20px;}
+.panel-head{padding:16px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;}
+.panel-head h2{font-family:var(--font-display);font-size:17px;margin:0;color:var(--ink);}
+.panel-body{padding:18px 20px;}
+
+/* ---------- Tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{
+  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--slate);
+  padding:10px 14px;border-bottom:2px solid var(--line);background:var(--paper-alt);
+}
+td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FBFAF6;}
+.table-wrap{overflow-x:auto;}
+.empty-row{padding:40px 20px;text-align:center;color:var(--slate);}
+
+/* Stamp badges */
+.stamp{
+  display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.5px;border:1.5px solid currentColor;transform:rotate(-2deg);
+}
+.stamp.active{color:var(--emerald);background:var(--emerald-bg);}
+.stamp.pending{color:var(--amber);background:var(--amber-bg);}
+.stamp.overdue{color:var(--rust);background:var(--rust-bg);}
+.stamp.closed{color:var(--slate);background:#EEEEEA;}
+.stamp.paid{color:var(--emerald);background:var(--emerald-bg);}
+.stamp.partial{color:var(--amber);background:var(--amber-bg);}
+.stamp.defaulted{color:#fff;background:var(--rust);}
+
+/* Forms */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-grid .full{grid-column:1/-1;}
+@media (max-width:640px){.form-grid{grid-template-columns:1fr;}}
+.form-actions{display:flex;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line-soft);}
+.help{font-size:11.5px;color:var(--slate);margin-top:4px;}
+
+/* toolbar */
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:3px;background:var(--card);font-size:13.5px;}
+.spacer{flex:1;}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{background:var(--ink);color:#fff;padding:12px 18px;border-radius:4px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,0.25);animation:slideIn .2s ease;}
+.toast-item.err{background:var(--rust);}
+@keyframes slideIn{from{transform:translateY(10px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(20,33,61,0.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal-card{background:var(--paper);border-radius:5px;max-width:480px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,0.35);}
+.modal-card h3{font-family:var(--font-display);margin:0 0 12px;color:var(--ink);}
+.modal-card p{font-size:14px;color:var(--charcoal);line-height:1.6;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+/* Loan detail passbook card */
+.passbook{
+  background:var(--card);border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden;
+}
+.passbook:before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:repeating-linear-gradient(180deg,var(--paper) 0 6px, var(--ink) 6px 8px);
+}
+.passbook-head{padding:20px 24px 20px 30px;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.passbook-head .loan-id{font-family:var(--font-mono);color:var(--slate);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;}
+.passbook-head .cust-name{font-family:var(--font-display);font-size:22px;color:var(--ink);margin:3px 0 0;}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;padding:20px 24px 20px 30px;}
+.detail-item .k{font-size:11px;text-transform:uppercase;color:var(--slate);letter-spacing:0.4px;}
+.detail-item .v{font-family:var(--font-mono);font-size:16px;color:var(--charcoal);margin-top:3px;font-weight:600;}
+
+/* Sub nav / tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:18px;flex-wrap:wrap;}
+.tab-btn{padding:9px 16px;background:none;border:none;font-size:13.5px;color:var(--slate);border-bottom:2px solid transparent;margin-bottom:-2px;}
+.tab-btn.active{color:var(--ink);border-color:var(--ink);font-weight:600;}
+
+.link-btn{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:13px;padding:0;text-decoration:underline;}
+
+/* Mobile bottom nav */
+.bottom-nav{display:none;}
+@media (max-width:860px){
+  .sidebar{display:none;}
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--ink);z-index:50;
+    justify-content:space-around;padding:6px 2px 8px;box-shadow:0 -4px 16px rgba(0,0,0,0.2);
+  }
+  .bn-item{
+    background:none;border:none;color:#B8B4A8;display:flex;flex-direction:column;align-items:center;gap:2px;
+    font-size:10px;padding:6px 4px;flex:1;min-width:0;
+  }
+  .bn-item.active{color:#fff;}
+  .bn-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px;}
+  .content{padding:18px 14px 90px;}
+  .topbar{padding:14px 16px;}
+  .more-menu{position:fixed;bottom:64px;right:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.25);z-index:60;padding:8px;min-width:180px;}
+  .more-menu button{width:100%;text-align:left;padding:10px 12px;background:none;border:none;font-size:14px;border-radius:4px;}
+  .more-menu button:hover{background:var(--paper-alt);}
+}
+@media (min-width:861px){
+  .bottom-nav{display:none !important;}
+}
+
+/* print */
+@media print{
+  .sidebar,.topbar,.toolbar,.form-actions,.bottom-nav,#toast,.no-print{display:none !important;}
+  .content{padding:0;}
+  body{background:#fff;}
+  .panel{border:none;}
+  body.print-agreement-mode .content > *:not(.agreement-doc){display:none !important;}
+}
+
+.badge-count{background:var(--rust);color:#fff;font-size:10px;border-radius:10px;padding:1px 6px;margin-left:auto;}
+.icon-btn{background:none;border:1px solid var(--line);border-radius:3px;padding:6px 9px;}
+.icon-btn:hover{border-color:var(--ink);}
+.progress-bar{height:8px;background:var(--paper-alt);border-radius:4px;overflow:hidden;}
+.progress-bar .fill{height:100%;background:var(--emerald);}
+.small-muted{font-size:12px;color:var(--slate);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script>
+/* =====================================================================
+   Ledger — Live client. Talks to the backend REST API + Socket.IO
+   instead of localStorage. Mirrors the offline app's UI and logic.
+   ===================================================================== */
+
+/* ---------------- Utilities ---------------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtMoney(n){ n = Number(n)||0; return '₹' + n.toLocaleString('en-IN',{maximumFractionDigits:2}); }
+function fmtDate(d){ if(!d) return '—'; const dt = new Date(d+'T00:00:00'); if(isNaN(dt)) return d; return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+function todayDateStr(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function toast(msg, isErr){
+  const t = document.createElement('div');
+  t.className = 'toast-item' + (isErr?' err':'');
+  t.textContent = msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+/* ---------------- API layer ---------------- */
+let TOKEN = localStorage.getItem('ledger_live_token') || null;
+let ME = null, MY_AGENT = null;
+let socket = null;
+
+async function api(path, opts={}){
+  const res = await fetch('/api' + path, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', ...(TOKEN?{Authorization:'Bearer '+TOKEN}:{}), ...(opts.headers||{}) }
+  });
+  if(!res.ok){ const e = await res.json().catch(()=>({error:'Request failed'})); throw new Error(e.error||'Request failed'); }
+  if(res.status===204) return null;
+  return res.json();
+}
+
+/* ---------------- Cached state (refreshed from server) ---------------- */
+let customers=[], loans=[], branches=[], collectionAgents=[], disbursements=[], staffList=[], meta={}, activityLog=[];
+
+async function refetchCore(){
+  const wantStaff = can('staff');
+  const [c,l,b,a,d,m] = await Promise.all([
+    api('/customers'), api('/loans'), api('/branches'), api('/agents'), api('/disbursements'), api('/meta')
+  ]);
+  customers=c; loans=l; branches=b; collectionAgents=a; disbursements=d; meta=m;
+  if(wantStaff){ try{ staffList = await api('/staff'); }catch(e){ staffList=[]; } }
+  render();
+}
+
+function connectSocket(){
+  socket = io();
+  socket.on('connect', ()=>{ socket.emit('hello', {username: ME.username}); markConn(true); });
+  socket.on('disconnect', ()=>markConn(false));
+  socket.on('sync', async (evt)=>{
+    try{
+      if(evt.entity==='customers') customers = await api('/customers');
+      else if(evt.entity==='loans') loans = await api('/loans');
+      else if(evt.entity==='branches') branches = await api('/branches');
+      else if(evt.entity==='agents') collectionAgents = await api('/agents');
+      else if(evt.entity==='disbursements') disbursements = await api('/disbursements');
+      else if(evt.entity==='staff' && can('staff')) staffList = await api('/staff');
+      else if(evt.entity==='meta') meta = await api('/meta');
+      renderContent();
+    }catch(e){ /* token may have expired; ignore until next user action */ }
+  });
+}
+function markConn(on){ const d = document.getElementById('conn-dot'); if(d) d.style.background = on ? 'var(--emerald)' : 'var(--rust)'; }
+
+/* ---------------- Auth / permissions ---------------- */
+function can(perm){
+  const u = ME; if(!u) return false;
+  const rules = {
+    admin:   ['view','create','correct','disburse','delete','staff','backup','branches','collections'],
+    manager: ['view','create','correct','disburse','backup','branches','collections'],
+    staff:   ['view','create','disburse'],
+    agent:   ['view']
+  };
+  return (rules[u.role]||[]).includes(perm);
+}
+
+/* ---------------- Loan helpers (server already computes these, but a couple are display-only) ---------------- */
+function stampClass(status){
+  return { Active:'active', Pending:'pending', Overdue:'overdue', Closed:'closed', Defaulted:'defaulted', Partial:'pending' }[status] || 'pending';
+}
+function loanCloseDate(loan){
+  if(!loan.schedule || !loan.schedule.length) return null;
+  const allPaid = loan.schedule.every(r=>r.status==='Paid');
+  if(allPaid){
+    const dates = loan.schedule.map(r=>r.paidDate).filter(Boolean).sort();
+    return { date: dates.length ? dates[dates.length-1] : loan.schedule[loan.schedule.length-1].dueDate, actual:true };
+  }
+  return { date: loan.schedule[loan.schedule.length-1].dueDate, actual:false };
+}
+function reminderItems(){
+  const today = todayDateStr();
+  const in7 = new Date(); in7.setDate(in7.getDate()+7);
+  const in7Str = in7.toISOString().slice(0,10);
+  const items = [];
+  loans.forEach(l=>{
+    const c = customers.find(c=>c.id===l.customerId);
+    (l.schedule||[]).forEach(r=>{
+      if(r.status==='Paid') return;
+      if(r.dueDate <= in7Str){
+        items.push({ loanId:l.id, customer:c, no:r.no, dueDate:r.dueDate, amount: Math.round((r.emi-(r.paidAmount||0))*100)/100, overdue: r.dueDate<today, daysDiff: daysBetween(r.dueDate,today), agent: l.agentId||'' });
+      }
+    });
+  });
+  items.sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  return items;
+}
+function currentAgentRecord(){ return MY_AGENT; }
+
+/* ---------------- Icons ---------------- */
+const ICONS = {
+  dashboard: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  customers: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.6"/><path d="M15.5 14.2c2.6.4 4.5 2.7 4.5 5.8"/></svg>',
+  loans: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>',
+  disb: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M14 6l6 6-6 6"/></svg>',
+  correction: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  reminders: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a1.9 1.9 0 0 1-3.4 0"/></svg>',
+  branches: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6M9 12h.01M15 12h.01M12 8h.01"/></svg>',
+  collections: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>',
+  agents: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a7 7 0 0 1 13 0"/><path d="M19 8v4M21 10h-4"/></svg>',
+  staff: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M4 20c0-3.9 3.6-7 8-7s8 3.1 8 7"/></svg>',
+  settings: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  activity: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2 8 4-16 2 8h6"/></svg>',
+  reports: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>',
+  logout: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+  more: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'
+};
+
+/* ---------------- Routing ---------------- */
+let VIEW = { screen:'dashboard', params:{} };
+let MORE_OPEN = false;
+function nav(screen, params){ VIEW = { screen, params: params||{} }; MORE_OPEN=false; render(); window.scrollTo(0,0); }
+
+function navItems(){
+  if(ME && ME.role==='agent'){
+    const myOverdue = MY_AGENT ? reminderItems().filter(r=>r.overdue && r.agent===MY_AGENT.id).length : 0;
+    return [
+      { key:'collections', label:'My Collections', icon:'collections' },
+      { key:'reminders', label:'Reminders', icon:'reminders', badge: myOverdue }
+    ];
+  }
+  const items = [
+    { key:'dashboard', label:'Dashboard', icon:'dashboard' },
+    { key:'customers', label:'Customers', icon:'customers' },
+    { key:'loans', label:'Loans', icon:'loans' },
+    { key:'disbursements', label:'Disbursements', icon:'disb' },
+    { key:'correction', label:'Correction', icon:'correction' },
+    { key:'reminders', label:'Reminders', icon:'reminders', badge: reminderItems().filter(r=>r.overdue).length },
+  ];
+  if(can('branches')) items.push({ key:'branches', label:'Branches', icon:'branches' });
+  items.push({ key:'collections', label:'Collections', icon:'collections' });
+  if(can('collections')) items.push({ key:'agents', label:'Collection Agents', icon:'agents' });
+  items.push({ key:'reports', label:'Reports', icon:'reports' });
+  if(can('staff')) items.push({ key:'staff', label:'Staff & Roles', icon:'staff' });
+  items.push({ key:'activity', label:'Activity Log', icon:'activity' });
+  items.push({ key:'settings', label:'Settings', icon:'settings' });
+  return items;
+}
+
+function screenTitle(){
+  const map = {
+    dashboard:'Dashboard', customers:'Customers', 'customer-form':'Customer',
+    loans:'Loans', 'loan-form':'New Loan', 'loan-detail':'Loan Detail',
+    disbursements:'Disbursements', 'disbursement-form':'New Disbursement',
+    correction:'Loan Correction', 'correction-form':'Correct Loan', 'topup-form':'Loan Top-Up',
+    reminders:'Reminders', branches:'Branches', 'branch-form':'Branch',
+    collections:'Collections', agents:'Collection Agents', 'agent-form':'Collection Agent',
+    reports:'Reports', staff:'Staff & Roles', 'staff-form':'Staff Member',
+    activity:'Activity Log', settings:'Settings'
+  };
+  return map[VIEW.screen] || 'Ledger';
+}
+
+/* ---------------- Render root ---------------- */
+function render(){
+  const app = document.getElementById('app');
+  if(!TOKEN || !ME){ app.innerHTML = screenLogin(); attachAfterRender(); return; }
+  app.innerHTML = shellHTML();
+  attachAfterRender();
+}
+
+function shellHTML(){
+  const items = navItems();
+  const primaryMobile = items.slice(0,4);
+  const overflowMobile = items.slice(4);
+  return `
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <p class="name">${esc(meta.companyName||'Ledger')}</p>
+        <p class="co">Ledger · Live</p>
+      </div>
+      <ul class="nav-list">
+        ${items.map(it=>`
+          <li class="nav-item">
+            <button class="nav-link ${VIEW.screen===it.key?'active':''}" data-nav="${it.key}">
+              ${ICONS[it.icon]}<span>${it.label}</span>${it.badge?`<span class="badge-count">${it.badge}</span>`:''}
+            </button>
+          </li>`).join('')}
+      </ul>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span id="conn-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a6432d;margin-right:6px;"></span>
+          ${esc(ME.name)}<span class="role">${esc(ME.role)}</span>
+        </div>
+        <button class="btn btn-outline btn-sm btn-block" data-action="logout" style="color:#EDEBE3;border-color:rgba(255,255,255,0.25);">${ICONS.logout} Log out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div><h1>${screenTitle()}</h1><div class="crumbs">${esc(meta.companyName||'Ledger')}</div></div>
+        <div class="small-muted no-print">${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</div>
+      </div>
+      <div class="content" id="content"></div>
+    </div>
+    <nav class="bottom-nav">
+      ${primaryMobile.map(it=>`<button class="bn-item ${VIEW.screen===it.key?'active':''}" data-nav="${it.key}">${ICONS[it.icon]}<span>${it.label}</span></button>`).join('')}
+      ${overflowMobile.length ? `<button class="bn-item" data-action="toggle-more">${ICONS.more}<span>More</span></button>` : ''}
+    </nav>
+    ${MORE_OPEN ? `<div class="more-menu">${overflowMobile.map(it=>`<button data-nav="${it.key}">${it.label}</button>`).join('')}<button data-action="logout" style="color:var(--rust);">Log out</button></div>` : ''}
+  </div>`;
+}
+
+/* ---------------- Login ---------------- */
+function screenLogin(){
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <p class="login-brand">Ledger — Live</p>
+      <p class="login-sub">CRM &amp; Loan Management · Real-time</p>
+      <div id="login-error"></div>
+      <form id="login-form">
+        <div class="field"><label>Username</label><input type="text" name="username" required autofocus autocomplete="username"></div>
+        <div class="field"><label>Password</label><input type="password" name="password" required autocomplete="current-password"></div>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+      <p class="login-hint">First time here? Default login is <strong>admin</strong> / <strong>admin123</strong>.<br>Change it immediately from Settings.<br>Every device signed in sees the same data, live.</p>
+    </div>
+  </div>`;
+}
+
+/* Fill #content after shell mounted */
+function renderContent(){
+  const el = document.getElementById('content');
+  if(!el) return;
+  const fns = {
+    dashboard: screenDashboard, customers: screenCustomers, 'customer-form': screenCustomerForm,
+    loans: screenLoans, 'loan-form': screenLoanForm, 'loan-detail': screenLoanDetail,
+    disbursements: screenDisbursements, 'disbursement-form': screenDisbursementForm,
+    correction: screenCorrection, 'correction-form': screenCorrectionForm, 'topup-form': screenTopupForm,
+    reminders: screenReminders, branches: screenBranches, 'branch-form': screenBranchForm,
+    collections: screenCollections, agents: screenAgents, 'agent-form': screenAgentForm,
+    reports: screenReports, staff: screenStaff, 'staff-form': screenStaffForm,
+    activity: screenActivity, settings: screenSettings
+  };
+  const fn = fns[VIEW.screen] || screenDashboard;
+  el.innerHTML = fn(VIEW.params||{});
+  attachFormHandlers();
+  if(VIEW.screen==='collections' && (VIEW.params.tab||'loans')==='logs') loadCollectionLogsTab(VIEW.params||{});
+  if(VIEW.screen==='activity') loadActivity();
+}
+
+/* =====================================================================
+   DASHBOARD
+   ===================================================================== */
+function screenDashboard(){
+  const totalCustomers = customers.length;
+  const totalLoans = loans.length;
+  const activeLoans = loans.filter(l=>l.computedStatus==='Active').length;
+  const overdueLoans = loans.filter(l=>l.computedStatus==='Overdue').length;
+  const totalSanctioned = loans.reduce((s,l)=>s+Number(l.principal||0),0);
+  const totalDisbursed = disbursements.reduce((s,d)=>s+Number(d.amount||0),0);
+  let totalCollected = 0, overdueInstallments = 0, upcoming7 = 0;
+  const today = todayDateStr();
+  const in7 = new Date(); in7.setDate(in7.getDate()+7);
+  const in7Str = in7.toISOString().slice(0,10);
+  loans.forEach(l=>(l.schedule||[]).forEach(r=>{
+    if(r.status==='Paid') totalCollected += Number(r.paidAmount||r.emi||0);
+    if(r.status!=='Paid' && r.dueDate < today) overdueInstallments++;
+    if(r.status!=='Paid' && r.dueDate>=today && r.dueDate<=in7Str) upcoming7++;
+  }));
+  const recentLoans = [...loans].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,6);
+  const collectionPct = totalSanctioned ? Math.min(100, Math.round((totalCollected/totalSanctioned)*100)) : 0;
+
+  return `
+  <div class="stat-grid">
+    <div class="stat-card"><div class="label">Total Customers</div><div class="value">${totalCustomers}</div></div>
+    <div class="stat-card"><div class="label">Total Loans</div><div class="value">${totalLoans}</div></div>
+    <div class="stat-card emerald"><div class="label">Active Loans</div><div class="value">${activeLoans}</div></div>
+    <div class="stat-card rust"><div class="label">Overdue Loans</div><div class="value">${overdueLoans}</div></div>
+    <div class="stat-card"><div class="label">Sanctioned Amount</div><div class="value">${fmtMoney(totalSanctioned)}</div></div>
+    <div class="stat-card amber"><div class="label">Disbursed Amount</div><div class="value">${fmtMoney(totalDisbursed)}</div></div>
+    <div class="stat-card emerald"><div class="label">Collected (EMIs)</div><div class="value">${fmtMoney(totalCollected)}</div></div>
+    <div class="stat-card rust"><div class="label">Overdue Installments</div><div class="value">${overdueInstallments}</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Collection Progress</h2><span class="small-muted">${collectionPct}% of sanctioned amount collected</span></div>
+    <div class="panel-body">
+      <div class="progress-bar"><div class="fill" style="width:${collectionPct}%"></div></div>
+      <p class="small-muted" style="margin-top:10px;">${upcoming7} installment(s) due in the next 7 days. Live across every device signed in.</p>
+    </div>
+  </div>
+  ${branches.length ? `
+  <div class="panel">
+    <div class="panel-head"><h2>Performance by Branch</h2><button class="link-btn" data-nav="branches">View all →</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Branch</th><th>Loans</th><th>Sanctioned</th><th>Disbursed</th><th>Collected</th><th>Overdue</th></tr></thead>
+      <tbody>${branches.map(b=>{
+        const custIds = new Set(customers.filter(c=>c.branchId===b.id).map(c=>c.id));
+        const bLoans = loans.filter(l=>custIds.has(l.customerId));
+        const sanctioned = bLoans.reduce((s,l)=>s+Number(l.principal||0),0);
+        const loanIds = new Set(bLoans.map(l=>l.id));
+        const disb = disbursements.filter(d=>loanIds.has(d.loanId)).reduce((s,d)=>s+Number(d.amount||0),0);
+        let coll=0, ov=0;
+        bLoans.forEach(l=>(l.schedule||[]).forEach(r=>{ if(r.status==='Paid') coll+=Number(r.paidAmount||0); else if(r.dueDate<today) ov++; }));
+        return `<tr><td><strong>${esc(b.name)}</strong></td><td>${bLoans.length}</td><td class="mono">${fmtMoney(sanctioned)}</td><td class="mono">${fmtMoney(disb)}</td><td class="mono">${fmtMoney(coll)}</td><td>${ov?`<span class="stamp overdue">${ov}</span>`:'0'}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  </div>` : ''}
+  <div class="panel">
+    <div class="panel-head"><h2>Recent Loans</h2><button class="link-btn" data-nav="loans">View all →</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Loan</th><th>Customer</th><th>Principal</th><th>Status</th><th></th></tr></thead>
+      <tbody>${recentLoans.length ? recentLoans.map(l=>{
+        const c = customers.find(c=>c.id===l.customerId);
+        return `<tr><td class="mono">${esc(l.id.slice(-6).toUpperCase())}</td><td>${esc(c?c.name:'—')}</td><td class="mono">${fmtMoney(l.principal)}</td><td><span class="stamp ${stampClass(l.computedStatus)}">${l.computedStatus}</span></td><td><button class="link-btn" data-nav="loan-detail" data-id="${l.id}">Open →</button></td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="empty-row">No loans yet.</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* =====================================================================
+   CUSTOMERS
+   ===================================================================== */
+function screenCustomers(params){
+  const q = (params.q||'').toLowerCase();
+  const branchFilter = params.branch || '';
+  const list = customers.filter(c=>{
+    const matchQ = !q || (c.name+c.phone+(c.idNumber||'')).toLowerCase().includes(q);
+    const matchB = !branchFilter || c.branchId===branchFilter;
+    return matchQ && matchB;
+  }).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  return `
+  <div class="toolbar">
+    <input class="search-input" id="cust-search" placeholder="Search by name, phone or ID number…" value="${esc(params.q||'')}">
+    ${branches.length ? `<select id="cust-branch-filter" class="search-input" style="max-width:180px;flex:none;">
+      <option value="">All branches</option>
+      ${branches.map(b=>`<option value="${b.id}" ${branchFilter===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}
+    </select>` : ''}
+    <span class="spacer"></span>
+    <button class="btn btn-primary" data-nav="customer-form">+ New Customer</button>
+  </div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Phone</th><th>Branch</th><th>ID Proof</th><th>Occupation</th><th>Loans</th><th></th></tr></thead>
+    <tbody>${list.length ? list.map(c=>{
+      const loanCount = loans.filter(l=>l.customerId===c.id).length;
+      const branch = branches.find(b=>b.id===c.branchId);
+      return `<tr>
+        <td><strong>${esc(c.name)}</strong></td>
+        <td class="mono">${esc(c.phone)}</td>
+        <td>${branch?esc(branch.name):'—'}</td>
+        <td>${esc(c.idType||'—')} ${c.idNumber?('· '+esc(c.idNumber)):''}</td>
+        <td>${esc(c.occupation||'—')}</td>
+        <td>${loanCount}</td>
+        <td style="white-space:nowrap;">
+          <button class="link-btn" data-nav="customer-form" data-id="${c.id}">Edit</button>
+          &nbsp;·&nbsp;<button class="link-btn" data-nav="loan-form" data-customer="${c.id}">New loan</button>
+        </td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7" class="empty-row">No customers yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+function screenCustomerForm(params){
+  const c = params.id ? customers.find(x=>x.id===params.id) : null;
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>${c?'Edit Customer':'New Customer'}</h2></div>
+    <div class="panel-body">
+      <form id="customer-form" data-id="${c?c.id:''}">
+        <div class="form-grid">
+          <div class="field"><label>Full Name *</label><input name="name" required value="${esc(c?c.name:'')}"></div>
+          <div class="field"><label>Phone *</label><input name="phone" required value="${esc(c?c.phone:'')}"></div>
+          <div class="field"><label>Email</label><input type="email" name="email" value="${esc(c?c.email:'')}"></div>
+          <div class="field"><label>Occupation</label><input name="occupation" value="${esc(c?c.occupation:'')}"></div>
+          <div class="field"><label>Branch / Store</label>
+            <select name="branchId"><option value="">Unassigned</option>
+              ${branches.map(b=>`<option value="${b.id}" ${c&&c.branchId===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label>ID Proof Type</label>
+            <select name="idType">${['Aadhaar','PAN','Voter ID','Driving Licence','Passport','Other'].map(t=>`<option ${c&&c.idType===t?'selected':''}>${t}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>ID Number</label><input name="idNumber" value="${esc(c?c.idNumber:'')}"></div>
+          <div class="field"><label>Monthly Income</label><input type="number" step="0.01" name="income" value="${c?c.income:''}"></div>
+          <div class="field full"><label>Address</label><textarea name="address" rows="2">${esc(c?c.address:'')}</textarea></div>
+          <div class="field full"><label>Notes</label><textarea name="notes" rows="2">${esc(c?c.notes:'')}</textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Save Customer</button>
+          <button class="btn btn-outline" type="button" data-nav="customers">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* =====================================================================
+   LOANS
+   ===================================================================== */
+function screenLoans(params){
+  const tab = params.tab || 'list';
+  const q = (params.q||'').toLowerCase();
+  const branchFilter = params.branch || '';
+  const list = loans.filter(l=>{
+    const c = customers.find(c=>c.id===l.customerId);
+    const matchQ = !q || ((c?c.name:'')+l.id).toLowerCase().includes(q);
+    const matchB = !branchFilter || (c && c.branchId===branchFilter);
+    return matchQ && matchB;
+  }).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+  const tabsHTML = `<div class="tabs">
+    <button class="tab-btn ${tab==='list'?'active':''}" data-nav="loans" data-tab="list">All Loans</button>
+    <button class="tab-btn ${tab==='calculator'?'active':''}" data-nav="loans" data-tab="calculator">EMI Calculator</button>
+  </div>`;
+
+  if(tab==='calculator'){
+    const defRoi = meta.defaultROI||4;
+    return tabsHTML + `
+    <div class="panel"><div class="panel-head"><h2>EMI Calculator</h2></div><div class="panel-body">
+      <div class="form-grid">
+        <div class="field"><label>Principal (₹)</label><input type="number" min="0" step="0.01" id="calc-principal" value="10000"></div>
+        <div class="field"><label>ROI (% per month, flat)</label><input type="number" min="0" step="0.01" id="calc-roi" value="${defRoi}"></div>
+        <div class="field"><label>Tenure (months)</label><input type="number" min="1" step="1" id="calc-tenure" value="12"></div>
+      </div>
+      <div id="calc-result" class="stat-grid" style="margin-top:16px;"></div>
+      <button class="btn btn-outline" id="calc-use-btn" style="margin-top:10px;">Use these values in a new loan →</button>
+    </div></div>`;
+  }
+
+  return tabsHTML + `
+  <div class="toolbar">
+    <input class="search-input" id="loan-search" placeholder="Search by customer or loan ID…" value="${esc(params.q||'')}">
+    ${branches.length ? `<select id="loan-branch-filter" class="search-input" style="max-width:180px;flex:none;">
+      <option value="">All branches</option>
+      ${branches.map(b=>`<option value="${b.id}" ${branchFilter===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}
+    </select>` : ''}
+    <span class="spacer"></span>
+    <button class="btn btn-primary" data-nav="loan-form">+ New Loan</button>
+  </div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Loan ID</th><th>Customer</th><th>Branch</th><th>Principal</th><th>Rate</th><th>Tenure</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.length ? list.map(l=>{
+      const c = customers.find(c=>c.id===l.customerId);
+      const branch = c ? branches.find(b=>b.id===c.branchId) : null;
+      return `<tr>
+        <td class="mono">${esc(l.id.slice(-6).toUpperCase())}</td>
+        <td>${esc(c?c.name:'—')}</td>
+        <td>${branch?esc(branch.name):'—'}</td>
+        <td class="mono">${fmtMoney(l.principal)}</td>
+        <td class="mono">${l.interestRate}%/mo</td>
+        <td class="mono">${l.tenureMonths}m</td>
+        <td><span class="stamp ${stampClass(l.computedStatus)}">${l.computedStatus}</span></td>
+        <td><button class="link-btn" data-nav="loan-detail" data-id="${l.id}">Open →</button></td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="8" class="empty-row">No loans yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+function screenLoanForm(params){
+  if(!customers.length) return `<div class="panel"><div class="panel-body">You need at least one customer before creating a loan. <button class="btn btn-primary" data-nav="customer-form">+ New Customer</button></div></div>`;
+  const preselect = params.customer || '';
+  const defRoi = params.roi || meta.defaultROI || 4;
+  const defPrincipal = params.principal || '';
+  const defTenure = params.tenure || '';
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>New Loan — Distribution</h2></div>
+    <div class="panel-body">
+      <form id="loan-form">
+        <div class="form-grid">
+          <div class="field full"><label>Customer *</label>
+            <select name="customerId" required><option value="">Select customer…</option>
+              ${customers.map(c=>`<option value="${c.id}" ${c.id===preselect?'selected':''}>${esc(c.name)} — ${esc(c.phone)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label>Principal Amount (₹) *</label><input type="number" min="1" step="0.01" name="principal" required id="loan-principal-input" value="${esc(defPrincipal)}"></div>
+          <div class="field"><label>ROI (% per month, flat) *</label><input type="number" min="0" step="0.01" name="interestRate" required id="loan-roi-input" value="${esc(defRoi)}"></div>
+          <div class="field"><label>Tenure (months) *</label><input type="number" min="1" step="1" name="tenureMonths" required value="${esc(defTenure)}"></div>
+          <div class="field"><label>Processing Fee (₹)</label><input type="number" min="0" step="0.01" name="processingFee" value="0"></div>
+          <div class="field"><label>Sanction Date *</label><input type="date" name="sanctionDate" required value="${todayDateStr()}"></div>
+          <div class="field full"><label>Purpose</label><input name="purpose" placeholder="e.g. Working capital, personal, vehicle…"></div>
+        </div>
+        <p class="help">ROI auto-fills from your default rate (${meta.defaultROI||4}% per month, fixed/flat for the full tenure) and can be overridden. The loan starts as <strong>Pending</strong> until a disbursement is recorded.</p>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Create Loan</button>
+          <button class="btn btn-outline" type="button" data-nav="loans">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* =====================================================================
+   LOAN DETAIL
+   ===================================================================== */
+function screenLoanDetail(params){
+  const l = loans.find(x=>x.id===params.id);
+  if(!l) return `<div class="panel"><div class="panel-body">Loan not found. <button class="link-btn" data-nav="loans">Back to loans</button></div></div>`;
+  const isAgentUser = ME.role==='agent';
+  if(isAgentUser && (!MY_AGENT || l.agentId!==MY_AGENT.id)){
+    return `<div class="panel"><div class="panel-body">This loan isn't assigned to you. <button class="link-btn" data-nav="collections">Back to My Collections</button></div></div>`;
+  }
+  const c = customers.find(c=>c.id===l.customerId);
+  const st = l.computedStatus;
+  const disbursed = disbursements.filter(d=>d.loanId===l.id);
+  const totalDisbursed = disbursed.reduce((s,d)=>s+Number(d.amount||0),0);
+  const paidCount = (l.schedule||[]).filter(r=>r.status==='Paid').length;
+  const activeTab = params.tab || (isAgentUser ? 'collection' : 'schedule');
+  const remPrincipal = l.remainingPrincipal;
+  const remInterest = l.remainingInterest;
+  const closeInfo = loanCloseDate(l);
+  const penalty = l.pendingPenalty;
+  const agent = collectionAgents.find(a=>a.id===l.agentId);
+
+  const scheduleRows = (l.schedule||[]).map(r=>{
+    const overdue = r.status!=='Paid' && r.dueDate < todayDateStr();
+    const label = r.status==='Paid' ? 'Paid' : r.status==='Partial' ? 'Partial' : (overdue ? 'Overdue' : 'Pending');
+    const stampCls = r.status==='Paid' ? 'paid' : (overdue && r.status!=='Partial' ? 'overdue' : 'pending');
+    const remarksCount = (r.remarksLog||[]).length;
+    const rowLogs = (l.collectionLog||[]).filter(e=>String(e.instNo)===String(r.no));
+    const lastLog = rowLogs.length ? [...rowLogs].sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0] : null;
+    return `<tr>
+      <td class="mono">${r.no}</td><td class="mono">${fmtDate(r.dueDate)}</td><td class="mono">${fmtMoney(r.emi)}</td>
+      <td class="mono">${fmtMoney(r.principal)}</td><td class="mono">${fmtMoney(r.interest)}</td><td class="mono">${fmtMoney(r.balance)}</td>
+      <td><span class="stamp ${stampCls}">${label}</span></td>
+      <td class="no-print">${rowLogs.length ? `<button class="link-btn" data-action="view-inst-notes" data-loan="${l.id}" data-no="${r.no}">${rowLogs.length} activity — ${esc(lastLog.outcome)}</button>` : `<span class="small-muted">No activity</span>`}</td>
+      <td class="no-print">
+        ${r.status==='Paid' || r.status==='Partial'
+          ? `${fmtMoney(r.paidAmount)}${r.status==='Partial'?' partial':''} on ${fmtDate(r.paidDate)}${remarksCount?` <span class="small-muted">(${remarksCount} note${remarksCount>1?'s':''})</span>`:''} &middot; <button class="link-btn" data-action="edit-emi" data-loan="${l.id}" data-no="${r.no}">${r.status==='Partial'?'Add payment':'Edit'}</button>${can('correct') ? ` &middot; <button class="link-btn" data-action="unmark-emi" data-loan="${l.id}" data-no="${r.no}">Reset</button>` : ''}`
+          : `<button class="link-btn" data-action="mark-emi" data-loan="${l.id}" data-no="${r.no}">Record payment</button>`}
+        &middot; <button class="link-btn" data-action="log-activity" data-id="${l.id}" data-no="${r.no}">Log</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const disbRows = disbursed.map(d=>`<tr><td class="mono">${fmtDate(d.date)}</td><td class="mono">${fmtMoney(d.amount)}</td><td>${esc(d.mode)}</td><td class="mono">${esc(d.refNo||'—')}</td><td>${esc(d.disbursedBy)}</td><td>${esc(d.remarks||'')}</td></tr>`).join('');
+
+  const collLogRows = (l.collectionLog||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e=>`
+    <tr><td class="mono">${fmtDate(e.date)}</td><td class="mono">${e.instNo?'#'+e.instNo:'General'}</td><td><span class="stamp ${e.outcome==='Promised to pay'?'pending':(e.outcome==='Paid'?'paid':(e.outcome==='No response'?'overdue':'closed'))}">${esc(e.outcome)}</span></td><td>${esc(e.note||'')}</td><td>${esc(e.by)}</td></tr>`).join('');
+
+  const phone = c ? (c.phone||'').replace(/[^0-9+]/g,'') : '';
+
+  return `
+  <div class="passbook">
+    <div class="passbook-head">
+      <div>
+        <div class="loan-id">Loan #${esc(l.id.slice(-6).toUpperCase())} · Created ${fmtDate((l.createdAt||'').slice(0,10))}</div>
+        <p class="cust-name">${esc(c?c.name:'Unknown customer')}</p>
+        <div class="small-muted">${esc(c?c.phone:'')} ${phone?`&middot; <a href="tel:${phone}">Call</a>`:''}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="stamp ${stampClass(st)}" style="font-size:13px;">${st}</span>
+        <div style="margin-top:10px;" class="no-print">
+          ${can('correct') ? `<button class="btn btn-outline btn-sm" data-nav="correction-form" data-id="${l.id}">Correct loan</button>` : ''}
+          ${can('correct') && st!=='Closed' && st!=='Pending' ? `<button class="btn btn-outline btn-sm" data-nav="topup-form" data-id="${l.id}">Top-up loan</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Principal</div><div class="v">${fmtMoney(l.principal)}</div></div>
+      <div class="detail-item"><div class="k">ROI (Flat)</div><div class="v">${l.interestRate}%/mo</div></div>
+      <div class="detail-item"><div class="k">Tenure</div><div class="v">${l.tenureMonths} months</div></div>
+      <div class="detail-item"><div class="k">EMI</div><div class="v">${fmtMoney(l.emi)}</div></div>
+      <div class="detail-item"><div class="k">Sanction Date</div><div class="v">${fmtDate(l.sanctionDate)}</div></div>
+      <div class="detail-item"><div class="k">Disbursed</div><div class="v">${fmtMoney(totalDisbursed)} / ${fmtMoney(l.principal)}</div></div>
+      <div class="detail-item"><div class="k">Installments Paid</div><div class="v">${paidCount} / ${(l.schedule||[]).length}</div></div>
+      <div class="detail-item"><div class="k">Remaining Principal</div><div class="v">${fmtMoney(remPrincipal)}</div></div>
+      <div class="detail-item"><div class="k">Remaining Interest</div><div class="v">${fmtMoney(remInterest)}</div></div>
+      <div class="detail-item"><div class="k">${closeInfo&&closeInfo.actual?'Loan Closed On':'Expected Close Date'}</div><div class="v">${closeInfo?fmtDate(closeInfo.date):'—'}</div></div>
+      <div class="detail-item"><div class="k">Pending Penalty</div><div class="v" style="${penalty>0?'color:var(--rust);':''}">${fmtMoney(penalty)}</div></div>
+      <div class="detail-item"><div class="k">Collection Agent</div><div class="v">${agent?esc(agent.name):'Unassigned'}</div></div>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+  <div class="tabs no-print">
+    <button class="tab-btn ${activeTab==='schedule'?'active':''}" data-nav="loan-detail" data-id="${l.id}" data-tab="schedule">EMI Schedule</button>
+    ${!isAgentUser ? `<button class="tab-btn ${activeTab==='disbursement'?'active':''}" data-nav="loan-detail" data-id="${l.id}" data-tab="disbursement">Disbursements</button>` : ''}
+    ${(st==='Active'||st==='Overdue'||st==='Closed') ? `<button class="tab-btn ${activeTab==='collection'?'active':''}" data-nav="loan-detail" data-id="${l.id}" data-tab="collection">Collection</button>` : ''}
+    ${l.purpose ? `<button class="tab-btn ${activeTab==='info'?'active':''}" data-nav="loan-detail" data-id="${l.id}" data-tab="info">Details</button>` : ''}
+  </div>
+  ${activeTab==='schedule' ? `
+  <div class="panel"><div class="panel-head"><h2>EMI Schedule</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Due Date</th><th>EMI</th><th>Principal</th><th>Interest</th><th>Balance</th><th>Status</th><th>Collection Activity</th><th class="no-print"></th></tr></thead>
+    <tbody>${scheduleRows || `<tr><td colspan="9" class="empty-row">No schedule yet — record a disbursement to activate this loan.</td></tr>`}</tbody>
+  </table></div></div>` : ''}
+  ${activeTab==='disbursement' ? `
+  <div class="panel"><div class="panel-head"><h2>Disbursement History</h2><button class="btn btn-primary btn-sm no-print" data-nav="disbursement-form" data-loan="${l.id}">+ Record Disbursement</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Mode</th><th>Reference</th><th>By</th><th>Remarks</th></tr></thead>
+  <tbody>${disbRows || `<tr><td colspan="6" class="empty-row">No disbursement recorded yet.</td></tr>`}</tbody></table></div></div>` : ''}
+  ${activeTab==='collection' ? `
+  <div class="panel"><div class="panel-head"><h2>Collection</h2></div><div class="panel-body">
+    <p><strong>Agent:</strong> ${agent?esc(agent.name):'Unassigned'} ${agent&&agent.phone?`(${esc(agent.phone)})`:''}
+    ${!isAgentUser ? `&middot; <button class="link-btn" data-action="assign-agent" data-id="${l.id}">${agent?'Reassign':'Assign'}</button>` : ''}</p>
+    <button class="btn btn-outline btn-sm" data-action="log-activity" data-id="${l.id}">+ Log collection activity</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Inst.</th><th>Outcome</th><th>Note</th><th>By</th></tr></thead>
+  <tbody>${collLogRows || `<tr><td colspan="5" class="empty-row">No activity logged yet.</td></tr>`}</tbody></table></div></div>` : ''}
+  ${activeTab==='info' ? `<div class="panel"><div class="panel-body">${l.purpose?`<p><strong>Purpose:</strong> ${esc(l.purpose)}</p>`:''}</div></div>` : ''}
+  ${can('delete') ? `<button class="btn btn-danger-outline btn-sm no-print" data-action="delete-loan" data-id="${l.id}">Delete this loan</button>` : ''}
+  `;
+}
+
+/* =====================================================================
+   DISBURSEMENTS
+   ===================================================================== */
+function screenDisbursements(){
+  const rows = [...disbursements].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  return `
+  <div class="toolbar"><span class="spacer"></span><button class="btn btn-primary" data-nav="disbursement-form">+ New Disbursement</button></div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Loan</th><th>Customer</th><th>Amount</th><th>Mode</th><th>Reference</th><th>By</th></tr></thead>
+    <tbody>${rows.length ? rows.map(d=>{
+      const l = loans.find(x=>x.id===d.loanId);
+      const c = l ? customers.find(c=>c.id===l.customerId) : null;
+      return `<tr><td class="mono">${fmtDate(d.date)}</td><td><button class="link-btn" data-nav="loan-detail" data-id="${d.loanId}">${l?esc(l.id.slice(-6).toUpperCase()):'—'}</button></td><td>${esc(c?c.name:'—')}</td><td class="mono">${fmtMoney(d.amount)}</td><td>${esc(d.mode)}</td><td class="mono">${esc(d.refNo||'—')}</td><td>${esc(d.disbursedBy)}</td></tr>`;
+    }).join('') : `<tr><td colspan="7" class="empty-row">No disbursements recorded yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+function screenDisbursementForm(params){
+  const openLoans = loans.filter(l=>l.computedStatus!=='Closed');
+  if(!openLoans.length) return `<div class="panel"><div class="panel-body">No open loans available. <button class="link-btn" data-nav="loan-form">Create a loan first</button></div></div>`;
+  const preselect = params.loan || '';
+  return `
+  <div class="panel"><div class="panel-head"><h2>Record Disbursement</h2></div><div class="panel-body">
+    <form id="disbursement-form">
+      <div class="form-grid">
+        <div class="field full"><label>Loan *</label>
+          <select name="loanId" required><option value="">Select loan…</option>
+            ${openLoans.map(l=>{ const c = customers.find(c=>c.id===l.customerId); return `<option value="${l.id}" ${l.id===preselect?'selected':''}>${esc(c?c.name:'—')} — ${esc(l.id.slice(-6).toUpperCase())} (${fmtMoney(l.principal)})</option>`; }).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Amount (₹) *</label><input type="number" min="1" step="0.01" name="amount" required></div>
+        <div class="field"><label>Date *</label><input type="date" name="date" required value="${todayDateStr()}"></div>
+        <div class="field"><label>Mode *</label><select name="mode" required>${['Bank Transfer','Cash','Cheque','UPI','Other'].map(m=>`<option>${m}</option>`).join('')}</select></div>
+        <div class="field"><label>Reference / Transaction No.</label><input name="refNo"></div>
+        <div class="field full"><label>Remarks</label><input name="remarks"></div>
+      </div>
+      <p class="help">Recording the first disbursement against a Pending loan will activate its EMI schedule from the disbursement date.</p>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save Disbursement</button><button class="btn btn-outline" type="button" data-nav="disbursements">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   CORRECTION
+   ===================================================================== */
+function screenCorrection(params){
+  const q = (params.q||'').toLowerCase();
+  const list = loans.filter(l=>{ const c = customers.find(c=>c.id===l.customerId); return !q || ((c?c.name:'')+l.id).toLowerCase().includes(q); }).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  return `
+  <div class="panel"><div class="panel-head"><h2>Loan Correction</h2></div><div class="panel-body">
+    <p class="small-muted">Correct sanctioned terms on an existing loan. Every change is written to the Activity Log with the reason given.</p>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Loan ID</th><th>Customer</th><th>Principal</th><th>Rate</th><th>Tenure</th><th>Status</th><th></th></tr></thead>
+  <tbody>${list.length ? list.map(l=>{
+    const c = customers.find(c=>c.id===l.customerId);
+    return `<tr><td class="mono">${esc(l.id.slice(-6).toUpperCase())}</td><td>${esc(c?c.name:'—')}</td><td class="mono">${fmtMoney(l.principal)}</td><td class="mono">${l.interestRate}%</td><td class="mono">${l.tenureMonths}m</td><td><span class="stamp ${stampClass(l.computedStatus)}">${l.computedStatus}</span></td><td>${can('correct')?`<button class="link-btn" data-nav="correction-form" data-id="${l.id}">Correct →</button>`:`<span class="small-muted">No access</span>`}</td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty-row">No loans yet.</td></tr>`}</tbody></table></div></div>`;
+}
+
+function screenCorrectionForm(params){
+  if(!can('correct')) return `<div class="panel"><div class="panel-body">You don't have permission to correct loans.</div></div>`;
+  const l = loans.find(x=>x.id===params.id);
+  if(!l) return `<div class="panel"><div class="panel-body">Loan not found.</div></div>`;
+  const c = customers.find(c=>c.id===l.customerId);
+  const hasPaid = (l.schedule||[]).some(r=>r.status==='Paid'||r.status==='Partial');
+  return `
+  <div class="panel"><div class="panel-head"><h2>Correct Loan — ${esc(c?c.name:'')} (#${esc(l.id.slice(-6).toUpperCase())})</h2></div><div class="panel-body">
+    ${hasPaid ? `<div class="login-error" style="background:var(--amber-bg);color:#7a5a1f;">This loan already has payments recorded. Changing principal, rate, tenure or sanction date will regenerate the full schedule and reset paid-status — reconcile manually afterwards.</div>` : ''}
+    <form id="correction-form" data-id="${l.id}">
+      <div class="form-grid">
+        <div class="field"><label>Principal Amount (₹)</label><input type="number" min="1" step="0.01" name="principal" value="${l.principal}"></div>
+        <div class="field"><label>ROI (% per month, flat)</label><input type="number" min="0" step="0.01" name="interestRate" value="${l.interestRate}"></div>
+        <div class="field"><label>Tenure (months)</label><input type="number" min="1" step="1" name="tenureMonths" value="${l.tenureMonths}"></div>
+        <div class="field"><label>Sanction Date</label><input type="date" name="sanctionDate" value="${l.sanctionDate}"></div>
+        <div class="field"><label>Status</label><select name="status">${['Pending','Active','Closed','Defaulted'].map(s=>`<option ${l.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="field"><label>Processing Fee (₹)</label><input type="number" min="0" step="0.01" name="processingFee" value="${l.processingFee||0}"></div>
+        <div class="field full"><label>Purpose</label><input name="purpose" value="${esc(l.purpose||'')}"></div>
+        <div class="field full"><label>Reason for correction *</label><input name="reason" required placeholder="e.g. Data entry error in tenure, corrected as per signed agreement"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save Correction</button><button class="btn btn-outline" type="button" data-nav="loan-detail" data-id="${l.id}">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   TOP-UP
+   ===================================================================== */
+function screenTopupForm(params){
+  if(!can('correct')) return `<div class="panel"><div class="panel-body">You don't have permission to top up loans.</div></div>`;
+  const l = loans.find(x=>x.id===params.id);
+  if(!l) return `<div class="panel"><div class="panel-body">Loan not found.</div></div>`;
+  const c = customers.find(c=>c.id===l.customerId);
+  return `
+  <div class="panel"><div class="panel-head"><h2>Top-Up Loan — ${esc(c?c.name:'')} (#${esc(l.id.slice(-6).toUpperCase())})</h2></div><div class="panel-body">
+    <div class="detail-grid" style="margin-bottom:16px;">
+      <div class="detail-item"><div class="k">Outstanding Principal</div><div class="v">${fmtMoney(l.remainingPrincipal)}</div></div>
+      <div class="detail-item"><div class="k">Current ROI</div><div class="v">${l.interestRate}%/mo</div></div>
+    </div>
+    <form id="topup-form" data-id="${l.id}">
+      <div class="form-grid">
+        <div class="field"><label>Top-Up Amount (₹) *</label><input type="number" min="1" step="0.01" name="topupAmount" required></div>
+        <div class="field"><label>New Tenure (months) *</label><input type="number" min="1" step="1" name="tenureMonths" required value="${l.tenureMonths}"></div>
+        <div class="field"><label>New ROI (% per month, flat) *</label><input type="number" min="0" step="0.01" name="interestRate" required value="${l.interestRate||meta.defaultROI||4}"></div>
+        <div class="field"><label>Date *</label><input type="date" name="date" required value="${todayDateStr()}"></div>
+        <div class="field full"><label>Mode *</label>
+          <select name="mode" required>
+            <option value="consolidate">Close old loan, open one new consolidated loan (outstanding + top-up)</option>
+            <option value="same">Keep same loan account, rebuild schedule from today</option>
+          </select>
+        </div>
+        <div class="field full"><label>Remarks</label><input name="remarks"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Process Top-Up</button><button class="btn btn-outline" type="button" data-nav="loan-detail" data-id="${l.id}">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   REMINDERS
+   ===================================================================== */
+function screenReminders(){
+  const items0 = reminderItems();
+  const items = MY_AGENT ? items0.filter(r=>r.agent===MY_AGENT.id) : (ME.role==='agent' ? [] : items0);
+  const overdue = items.filter(r=>r.overdue);
+  const upcoming = items.filter(r=>!r.overdue);
+  function row(r){
+    const phone = r.customer ? (r.customer.phone||'').replace(/[^0-9+]/g,'') : '';
+    return `<tr>
+      <td>${esc(r.customer?r.customer.name:'—')}</td><td class="mono">${phone?esc(r.customer.phone):'—'}</td>
+      <td><button class="link-btn" data-nav="loan-detail" data-id="${r.loanId}">#${esc(r.loanId.slice(-6).toUpperCase())}</button></td>
+      <td class="mono">#${r.no}</td><td class="mono">${fmtDate(r.dueDate)}</td><td class="mono">${fmtMoney(r.amount)}</td>
+      <td>${r.overdue?`<span class="stamp overdue">${r.daysDiff}d overdue</span>`:`<span class="stamp pending">Due in ${Math.max(0,-r.daysDiff)}d</span>`}</td>
+      <td class="no-print">${phone?`<a href="tel:${phone}" class="link-btn">Call</a> · `:''}<button class="link-btn" data-action="mark-emi" data-loan="${r.loanId}" data-no="${r.no}">Mark paid</button></td>
+    </tr>`;
+  }
+  return `
+  <div class="panel"><div class="panel-head"><h2>Overdue Installments (${overdue.length})</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>Customer</th><th>Phone</th><th>Loan</th><th>Inst.</th><th>Due Date</th><th>Amount</th><th>Status</th><th class="no-print"></th></tr></thead>
+    <tbody>${overdue.length?overdue.map(row).join(''):`<tr><td colspan="8" class="empty-row">No overdue installments.</td></tr>`}</tbody>
+  </table></div></div>
+  <div class="panel"><div class="panel-head"><h2>Due in Next 7 Days (${upcoming.length})</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>Customer</th><th>Phone</th><th>Loan</th><th>Inst.</th><th>Due Date</th><th>Amount</th><th>Status</th><th class="no-print"></th></tr></thead>
+    <tbody>${upcoming.length?upcoming.map(row).join(''):`<tr><td colspan="8" class="empty-row">Nothing due in the next 7 days.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+/* =====================================================================
+   BRANCHES
+   ===================================================================== */
+function screenBranches(){
+  const list = [...branches].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const today = todayDateStr();
+  return `
+  <div class="toolbar"><span class="spacer"></span>${can('branches')?`<button class="btn btn-primary" data-nav="branch-form">+ New Branch</button>`:''}</div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Branch / Store</th><th>Code</th><th>City</th><th>State</th><th>Customers</th><th>Loans</th><th>Sanctioned</th><th>Disbursed</th><th>Collected</th><th>Overdue</th><th></th></tr></thead>
+    <tbody>${list.length?list.map(b=>{
+      const custs = customers.filter(c=>c.branchId===b.id);
+      const custIds = new Set(custs.map(c=>c.id));
+      const bLoans = loans.filter(l=>custIds.has(l.customerId));
+      const sanctioned = bLoans.reduce((s,l)=>s+Number(l.principal||0),0);
+      const loanIds = new Set(bLoans.map(l=>l.id));
+      const disb = disbursements.filter(d=>loanIds.has(d.loanId)).reduce((s,d)=>s+Number(d.amount||0),0);
+      let coll=0, ov=0;
+      bLoans.forEach(l=>(l.schedule||[]).forEach(r=>{ if(r.status==='Paid') coll+=Number(r.paidAmount||0); else if(r.dueDate<today) ov++; }));
+      return `<tr><td><strong>${esc(b.name)}</strong></td><td class="mono">${esc(b.code||'—')}</td><td>${esc(b.city||'—')}</td><td>${esc(b.state||'—')}</td><td>${custs.length}</td><td>${bLoans.length}</td><td class="mono">${fmtMoney(sanctioned)}</td><td class="mono">${fmtMoney(disb)}</td><td class="mono">${fmtMoney(coll)}</td><td>${ov?`<span class="stamp overdue">${ov}</span>`:'0'}</td><td>${can('branches')?`<button class="link-btn" data-nav="branch-form" data-id="${b.id}">Edit</button>`:''}</td></tr>`;
+    }).join(''):`<tr><td colspan="11" class="empty-row">No branches yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+function screenBranchForm(params){
+  if(!can('branches')) return `<div class="panel"><div class="panel-body">Admins and managers only.</div></div>`;
+  const b = params.id ? branches.find(x=>x.id===params.id) : null;
+  return `
+  <div class="panel"><div class="panel-head"><h2>${b?'Edit Branch':'New Branch / Store'}</h2></div><div class="panel-body">
+    <form id="branch-form" data-id="${b?b.id:''}">
+      <div class="form-grid">
+        <div class="field"><label>Branch / Store Name *</label><input name="name" required value="${esc(b?b.name:'')}"></div>
+        <div class="field"><label>Branch Code</label><input name="code" value="${esc(b?b.code:'')}"></div>
+        <div class="field"><label>City</label><input name="city" value="${esc(b?b.city:'')}"></div>
+        <div class="field"><label>State</label><input name="state" value="${esc(b?b.state:'')}"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save Branch</button><button class="btn btn-outline" type="button" data-nav="branches">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   COLLECTIONS
+   ===================================================================== */
+function screenCollections(params){
+  const tab = params.tab || 'loans';
+  const isAgentUser = ME.role==='agent';
+  const agentFilter = MY_AGENT ? MY_AGENT.id : (params.agent || '');
+  const today = todayDateStr();
+  const eligible = loans.filter(l=>l.computedStatus==='Active'||l.computedStatus==='Overdue');
+  const list = isAgentUser && !MY_AGENT ? [] : eligible.filter(l=> !agentFilter || l.agentId===agentFilter || (agentFilter==='__unassigned' && !l.agentId));
+
+  function loanRow(l){
+    const c = customers.find(c=>c.id===l.customerId);
+    const agent = collectionAgents.find(a=>a.id===l.agentId);
+    const overdueRows = (l.schedule||[]).filter(r=>r.status!=='Paid' && r.dueDate<today);
+    const overdueAmt = overdueRows.reduce((s,r)=>s+Number(r.emi||0),0);
+    const phone = c ? (c.phone||'').replace(/[^0-9+]/g,'') : '';
+    return `<tr>
+      <td>${esc(c?c.name:'—')}</td><td class="mono">${phone?esc(c.phone):'—'}</td>
+      <td><button class="link-btn" data-nav="loan-detail" data-id="${l.id}" data-tab="collection">#${esc(l.id.slice(-6).toUpperCase())}</button></td>
+      <td>${agent?esc(agent.name):'<span class="small-muted">Unassigned</span>'}</td>
+      <td class="mono">${fmtMoney(l.remainingPrincipal)}</td>
+      <td>${overdueRows.length?`<span class="stamp overdue">${overdueRows.length} · ${fmtMoney(overdueAmt)}</span>`:'<span class="stamp active">0</span>'}</td>
+      <td><span class="stamp ${stampClass(l.computedStatus)}">${l.computedStatus}</span></td>
+      <td class="no-print" style="white-space:nowrap;">
+        ${phone?`<a href="tel:${phone}" class="link-btn">Call</a> · `:''}
+        ${!isAgentUser?`<button class="link-btn" data-action="assign-agent" data-id="${l.id}">${agent?'Reassign':'Assign'}</button> · `:''}
+        <button class="link-btn" data-action="log-activity" data-id="${l.id}">Log activity</button>
+      </td>
+    </tr>`;
+  }
+
+  const tabsHTML = `<div class="tabs"><button class="tab-btn ${tab==='loans'?'active':''}" data-nav="collections" data-tab="loans">Loans</button><button class="tab-btn ${tab==='logs'?'active':''}" data-nav="collections" data-tab="logs">Activity Log</button></div>`;
+
+  if(tab==='logs') return tabsHTML + `<div id="coll-logs-root"><p class="small-muted">Loading…</p></div>`;
+
+  return tabsHTML + `
+  <div class="toolbar">
+    ${!isAgentUser ? `<select id="collections-agent-filter" class="search-input" style="max-width:220px;">
+      <option value="">All agents</option><option value="__unassigned" ${agentFilter==='__unassigned'?'selected':''}>Unassigned only</option>
+      ${collectionAgents.map(a=>`<option value="${a.id}" ${agentFilter===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}
+    </select>` : ''}
+    <span class="spacer"></span>
+    ${can('collections') ? `<button class="btn btn-outline" data-nav="agents">Manage Agents</button>` : ''}
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Loans in Collection (${list.length})</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>Customer</th><th>Phone</th><th>Loan</th><th>Agent</th><th>Outstanding</th><th>Overdue Instalments</th><th>Status</th><th class="no-print"></th></tr></thead>
+    <tbody>${list.length?list.map(loanRow).join(''):`<tr><td colspan="8" class="empty-row">${isAgentUser && !MY_AGENT?"Your login isn't linked to a collection agent record yet — ask an admin to link it.":'No active or overdue loans right now.'}</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+async function loadCollectionLogsTab(params){
+  const q = new URLSearchParams();
+  if(params.from) q.set('from', params.from);
+  if(params.to) q.set('to', params.to);
+  if(params.agent) q.set('agent', params.agent);
+  let entries;
+  try{ entries = await api('/collection-logs?'+q.toString()); }catch(e){ entries = []; }
+  const isAgentUser = ME.role==='agent';
+  const root = document.getElementById('coll-logs-root');
+  if(!root) return;
+  root.innerHTML = `
+  <div class="toolbar no-print">
+    <div class="field" style="margin:0;"><label>From</label><input type="date" id="cl-from" value="${esc(params.from||'')}"></div>
+    <div class="field" style="margin:0;"><label>To</label><input type="date" id="cl-to" value="${esc(params.to||'')}"></div>
+    ${!isAgentUser ? `<div class="field" style="margin:0;"><label>Agent</label><select id="cl-agent">
+      <option value="">All agents</option><option value="__unassigned" ${params.agent==='__unassigned'?'selected':''}>Unassigned</option>
+      ${collectionAgents.map(a=>`<option value="${a.id}" ${params.agent===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}
+    </select></div>` : ''}
+    <span class="spacer"></span>
+    <button class="btn btn-outline btn-sm" id="cl-clear">Clear filters</button>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Collection Activity (${entries.length})</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Loan</th><th>Customer</th><th>Instalment</th><th>Outcome</th><th>Note</th><th>Agent</th></tr></thead>
+    <tbody>${entries.length?entries.map(e=>{
+      const l = loans.find(x=>x.id===e.loanId); const c = l?customers.find(c=>c.id===l.customerId):null;
+      return `<tr><td class="mono">${fmtDate(e.date)}</td><td><button class="link-btn" data-nav="loan-detail" data-id="${e.loanId}" data-tab="collection">#${l?esc(l.id.slice(-6).toUpperCase()):'—'}</button></td><td>${esc(c?c.name:'—')}</td><td class="mono">${e.instNo?'#'+e.instNo:'General'}</td><td><span class="stamp ${e.outcome==='Promised to pay'?'pending':(e.outcome==='Paid'?'paid':(e.outcome==='No response'?'overdue':'closed'))}">${esc(e.outcome)}</span></td><td>${esc(e.note||'')}</td><td>${esc(e.by)}</td></tr>`;
+    }).join(''):`<tr><td colspan="7" class="empty-row">No collection activity in this range.</td></tr>`}</tbody>
+  </table></div></div>`;
+
+  document.getElementById('cl-from').addEventListener('change', clNav);
+  document.getElementById('cl-to').addEventListener('change', clNav);
+  const clAgent = document.getElementById('cl-agent'); if(clAgent) clAgent.addEventListener('change', clNav);
+  document.getElementById('cl-clear').addEventListener('click', ()=>nav('collections',{tab:'logs'}));
+  function clNav(){ nav('collections', { tab:'logs', from: document.getElementById('cl-from').value, to: document.getElementById('cl-to').value, agent: (document.getElementById('cl-agent')||{}).value||'' }); }
+}
+
+/* =====================================================================
+   COLLECTION AGENTS
+   ===================================================================== */
+function screenAgents(){
+  if(!can('collections')) return `<div class="panel"><div class="panel-body">Admins and managers only.</div></div>`;
+  return `
+  <div class="toolbar"><span class="spacer"></span><button class="btn btn-primary" data-nav="agent-form">+ New Agent</button></div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Phone</th><th>Code</th><th>Linked Login</th><th>Loans Assigned</th><th></th></tr></thead>
+    <tbody>${collectionAgents.length?collectionAgents.map(a=>{
+      const n = loans.filter(l=>l.agentId===a.id && (l.computedStatus==='Active'||l.computedStatus==='Overdue')).length;
+      return `<tr><td>${esc(a.name)}</td><td class="mono">${esc(a.phone||'—')}</td><td class="mono">${esc(a.code||'—')}</td><td>${a.username?esc(a.username):'<span class="small-muted">None</span>'}</td><td>${n}</td><td><button class="link-btn" data-nav="agent-form" data-id="${a.id}">Edit</button></td></tr>`;
+    }).join(''):`<tr><td colspan="6" class="empty-row">No collection agents yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+function screenAgentForm(params){
+  if(!can('collections')) return `<div class="panel"><div class="panel-body">Admins and managers only.</div></div>`;
+  const a = params.id ? collectionAgents.find(x=>x.id===params.id) : null;
+  const agentLogins = staffList.filter(u=>u.role==='agent' && (u.username===(a&&a.username) || !collectionAgents.some(x=>x.username===u.username && x.id!==(a&&a.id))));
+  return `
+  <div class="panel"><div class="panel-head"><h2>${a?'Edit Collection Agent':'New Collection Agent'}</h2></div><div class="panel-body">
+    <form id="agent-form" data-id="${a?a.id:''}">
+      <div class="form-grid">
+        <div class="field"><label>Name *</label><input name="name" required value="${esc(a?a.name:'')}"></div>
+        <div class="field"><label>Phone</label><input name="phone" value="${esc(a?a.phone:'')}"></div>
+        <div class="field"><label>Agent Code</label><input name="code" value="${esc(a?a.code:'')}"></div>
+        <div class="field"><label>Linked Login</label>
+          <select name="username"><option value="">No login access</option>
+            ${agentLogins.map(u=>`<option value="${esc(u.username)}" ${a&&a.username===u.username?'selected':''}>${esc(u.name)} (${esc(u.username)})</option>`).join('')}
+          </select>
+          <p class="help">Only users with role "agent" appear here (create one in Staff &amp; Roles first).</p>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save Agent</button><button class="btn btn-outline" type="button" data-nav="agents">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   REPORTS
+   ===================================================================== */
+function screenReports(params){
+  if(ME.role==='agent') return `<div class="panel"><div class="panel-body">Reports aren't available on a collection agent login.</div></div>`;
+  const tab = params.tab || 'disbursement';
+  const from = params.from || '', to = params.to || '';
+  const inRange = d => (!from || (d||'')>=from) && (!to || (d||'')<=to);
+  const tabsHTML = `<div class="tabs">
+    <button class="tab-btn ${tab==='disbursement'?'active':''}" data-nav="reports" data-tab="disbursement">Disbursement</button>
+    <button class="tab-btn ${tab==='collection'?'active':''}" data-nav="reports" data-tab="collection">Collection</button>
+    <button class="tab-btn ${tab==='pendency'?'active':''}" data-nav="reports" data-tab="pendency">Pendency</button>
+    <button class="tab-btn ${tab==='pnl'?'active':''}" data-nav="reports" data-tab="pnl">Profit &amp; Loss</button>
+  </div>`;
+  const rangeBar = `<div class="toolbar no-print">
+    <div class="field" style="margin:0;"><label>From</label><input type="date" id="rep-from" value="${esc(from)}"></div>
+    <div class="field" style="margin:0;"><label>To</label><input type="date" id="rep-to" value="${esc(to)}"></div>
+    <span class="spacer"></span>
+    <button class="btn btn-outline btn-sm" id="rep-clear">Clear dates</button>
+    <button class="btn btn-outline btn-sm" onclick="window.print()">Print</button>
+    <button class="btn btn-primary btn-sm" id="rep-download">⭳ Download CSV</button>
+  </div>`;
+  if(tab==='collection') return tabsHTML+rangeBar+reportCollection(inRange);
+  if(tab==='pendency') return tabsHTML+rangeBar+reportPendency();
+  if(tab==='pnl') return tabsHTML+rangeBar+reportPnL(inRange);
+  return tabsHTML+rangeBar+reportDisbursement(inRange);
+}
+function reportDisbursement(inRange){
+  const rows = disbursements.filter(d=>inRange(d.date)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total = rows.reduce((s,d)=>s+Number(d.amount||0),0);
+  window.__repCSV = { filename:`disbursement-report-${todayDateStr()}.csv`, headers:['Date','Loan ID','Customer','Branch','Amount','Mode','Reference','Recorded By'],
+    rows: rows.map(d=>{ const l=loans.find(x=>x.id===d.loanId); const c=l?customers.find(c=>c.id===l.customerId):null; const branch=c?branches.find(b=>b.id===c.branchId):null; return [fmtDate(d.date), l?l.id.slice(-6).toUpperCase():'—', c?c.name:'—', branch?branch.name:'—', d.amount, d.mode, d.refNo||'', d.disbursedBy]; }) };
+  return `<div class="stat-grid"><div class="stat-card"><div class="label">Disbursements</div><div class="value">${rows.length}</div></div><div class="stat-card amber"><div class="label">Total Disbursed</div><div class="value">${fmtMoney(total)}</div></div></div>
+  <div class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Loan</th><th>Customer</th><th>Branch</th><th>Amount</th><th>Mode</th><th>Reference</th><th>By</th></tr></thead>
+  <tbody>${rows.length?rows.map(d=>{ const l=loans.find(x=>x.id===d.loanId); const c=l?customers.find(c=>c.id===l.customerId):null; const branch=c?branches.find(b=>b.id===c.branchId):null;
+    return `<tr><td class="mono">${fmtDate(d.date)}</td><td><button class="link-btn" data-nav="loan-detail" data-id="${d.loanId}">${l?esc(l.id.slice(-6).toUpperCase()):'—'}</button></td><td>${esc(c?c.name:'—')}</td><td>${branch?esc(branch.name):'—'}</td><td class="mono">${fmtMoney(d.amount)}</td><td>${esc(d.mode)}</td><td class="mono">${esc(d.refNo||'—')}</td><td>${esc(d.disbursedBy)}</td></tr>`;
+  }).join(''):`<tr><td colspan="8" class="empty-row">No disbursements in this range.</td></tr>`}</tbody></table></div></div>`;
+}
+function reportCollection(inRange){
+  const payments = [];
+  loans.forEach(l=>{ const c = customers.find(c=>c.id===l.customerId); (l.schedule||[]).forEach(r=>(r.remarksLog||[]).forEach(e=>{ if(!inRange(e.date)) return; payments.push({date:e.date, loanId:l.id, customer:c?c.name:'—', instNo:r.no, component:e.component, amount:e.amount, by:e.by}); })); });
+  payments.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const totalCollected = payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  let principalCollected=0, interestCollected=0;
+  loans.forEach(l=>(l.schedule||[]).forEach(r=>(r.remarksLog||[]).forEach(e=>{ if(!inRange(e.date)) return;
+    if(e.component==='principal') principalCollected+=Number(e.amount||0); else if(e.component==='interest') interestCollected+=Number(e.amount||0);
+    else { const ratio=r.emi?(r.interest/r.emi):0; interestCollected+=Number(e.amount||0)*ratio; principalCollected+=Number(e.amount||0)*(1-ratio); } })));
+  window.__repCSV = { filename:`collection-report-${todayDateStr()}.csv`, headers:['Date','Loan ID','Customer','Instalment','Component','Amount','Recorded By'], rows: payments.map(p=>[fmtDate(p.date), p.loanId.slice(-6).toUpperCase(), p.customer, p.instNo, p.component, p.amount, p.by]) };
+  return `<div class="stat-grid">
+    <div class="stat-card emerald"><div class="label">Total Collected</div><div class="value">${fmtMoney(totalCollected)}</div></div>
+    <div class="stat-card"><div class="label">Principal Portion</div><div class="value">${fmtMoney(Math.round(principalCollected*100)/100)}</div></div>
+    <div class="stat-card amber"><div class="label">Interest Portion</div><div class="value">${fmtMoney(Math.round(interestCollected*100)/100)}</div></div>
+    <div class="stat-card"><div class="label">Payment Entries</div><div class="value">${payments.length}</div></div></div>
+  <div class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Loan</th><th>Customer</th><th>Inst.</th><th>Component</th><th>Amount</th><th>By</th></tr></thead>
+  <tbody>${payments.length?payments.map(p=>`<tr><td class="mono">${fmtDate(p.date)}</td><td><button class="link-btn" data-nav="loan-detail" data-id="${p.loanId}">${esc(p.loanId.slice(-6).toUpperCase())}</button></td><td>${esc(p.customer)}</td><td class="mono">#${p.instNo}</td><td style="text-transform:capitalize;">${esc(p.component)}</td><td class="mono">${fmtMoney(p.amount)}</td><td>${esc(p.by)}</td></tr>`).join(''):`<tr><td colspan="7" class="empty-row">No collections in this range.</td></tr>`}</tbody></table></div></div>`;
+}
+function reportPendency(){
+  const today = todayDateStr(); const rows = [];
+  loans.forEach(l=>{ if(l.computedStatus==='Closed') return; const c=customers.find(c=>c.id===l.customerId); const agent=collectionAgents.find(a=>a.id===l.agentId);
+    (l.schedule||[]).forEach(r=>{ if(r.status==='Paid'||r.dueDate>=today) return; const daysLate=daysBetween(r.dueDate,today); const bucket=daysLate<=30?'0-30 days':daysLate<=60?'31-60 days':daysLate<=90?'61-90 days':'90+ days'; const amtDue=Math.round((r.emi-(r.paidAmount||0))*100)/100; rows.push({loanId:l.id, customer:c?c.name:'—', agent:agent?agent.name:'Unassigned', instNo:r.no, dueDate:r.dueDate, daysLate, bucket, amtDue}); }); });
+  rows.sort((a,b)=>b.daysLate-a.daysLate);
+  const totalOverdueAmt = rows.reduce((s,r)=>s+r.amtDue,0);
+  const totalPenalty = loans.reduce((s,l)=>s+Number(l.pendingPenalty||0),0);
+  const buckets = ['0-30 days','31-60 days','61-90 days','90+ days'].map(b=>({label:b, count:rows.filter(r=>r.bucket===b).length, amt:rows.filter(r=>r.bucket===b).reduce((s,r)=>s+r.amtDue,0)}));
+  window.__repCSV = { filename:`pendency-report-${todayDateStr()}.csv`, headers:['Loan ID','Customer','Agent','Instalment','Due Date','Days Overdue','Bucket','Amount Due'], rows: rows.map(r=>[r.loanId.slice(-6).toUpperCase(), r.customer, r.agent, r.instNo, fmtDate(r.dueDate), r.daysLate, r.bucket, r.amtDue]) };
+  return `<div class="stat-grid">
+    <div class="stat-card rust"><div class="label">Overdue Instalments</div><div class="value">${rows.length}</div></div>
+    <div class="stat-card rust"><div class="label">Total Overdue Amount</div><div class="value">${fmtMoney(totalOverdueAmt)}</div></div>
+    <div class="stat-card amber"><div class="label">Accrued Penalty (Est.)</div><div class="value">${fmtMoney(totalPenalty)}</div></div>
+    ${buckets.map(b=>`<div class="stat-card"><div class="label">${b.label}</div><div class="value">${b.count} · ${fmtMoney(b.amt)}</div></div>`).join('')}</div>
+  <div class="panel"><div class="table-wrap"><table><thead><tr><th>Loan</th><th>Customer</th><th>Agent</th><th>Inst.</th><th>Due Date</th><th>Days Overdue</th><th>Bucket</th><th>Amount Due</th></tr></thead>
+  <tbody>${rows.length?rows.map(r=>`<tr><td><button class="link-btn" data-nav="loan-detail" data-id="${r.loanId}">${esc(r.loanId.slice(-6).toUpperCase())}</button></td><td>${esc(r.customer)}</td><td>${esc(r.agent)}</td><td class="mono">#${r.instNo}</td><td class="mono">${fmtDate(r.dueDate)}</td><td class="mono">${r.daysLate}</td><td><span class="stamp overdue">${r.bucket}</span></td><td class="mono">${fmtMoney(r.amtDue)}</td></tr>`).join(''):`<tr><td colspan="8" class="empty-row">No overdue instalments.</td></tr>`}</tbody></table></div></div>`;
+}
+function reportPnL(inRange){
+  let interestCollected=0, principalCollected=0;
+  loans.forEach(l=>(l.schedule||[]).forEach(r=>(r.remarksLog||[]).forEach(e=>{ if(!inRange(e.date)) return;
+    if(e.component==='interest') interestCollected+=Number(e.amount||0); else if(e.component==='principal') principalCollected+=Number(e.amount||0);
+    else { const ratio=r.emi?(r.interest/r.emi):0; interestCollected+=Number(e.amount||0)*ratio; principalCollected+=Number(e.amount||0)*(1-ratio); } })));
+  const processingFees = loans.filter(l=>{ const d=disbursements.find(d=>d.loanId===l.id); return d && inRange(d.date); }).reduce((s,l)=>s+Number(l.processingFee||0),0);
+  const totalDisbursedInRange = disbursements.filter(d=>inRange(d.date)).reduce((s,d)=>s+Number(d.amount||0),0);
+  const totalDisbursedAllTime = disbursements.reduce((s,d)=>s+Number(d.amount||0),0);
+  const totalCollectedAllTime = loans.reduce((s,l)=>s+(l.schedule||[]).reduce((s2,r)=>s2+Number(r.paidAmount||0),0),0);
+  const capitalDeployed = Math.round((totalDisbursedAllTime-totalCollectedAllTime)*100)/100;
+  const badDebt = loans.filter(l=>l.computedStatus==='Defaulted').reduce((s,l)=>s+Number(l.remainingPrincipal||0),0);
+  const income = Math.round((interestCollected+processingFees)*100)/100;
+  const netEstimate = Math.round((income-badDebt)*100)/100;
+  window.__repCSV = { filename:`profit-loss-report-${todayDateStr()}.csv`, headers:['Metric','Amount'], rows:[
+    ['Interest Collected (in range)', Math.round(interestCollected*100)/100],['Principal Collected (in range)', Math.round(principalCollected*100)/100],
+    ['Processing Fees (loans disbursed in range)', processingFees],['Total Income (Interest + Fees)', income],
+    ['Estimated Bad Debt (Defaulted, outstanding)', Math.round(badDebt*100)/100],['Net Estimate (Income − Bad Debt)', netEstimate],
+    ['Total Disbursed (in range)', totalDisbursedInRange],['Capital Deployed / Outstanding in Field (all-time)', capitalDeployed] ] };
+  return `<div class="stat-grid">
+    <div class="stat-card emerald"><div class="label">Interest Income (range)</div><div class="value">${fmtMoney(Math.round(interestCollected*100)/100)}</div></div>
+    <div class="stat-card emerald"><div class="label">Processing Fees (range)</div><div class="value">${fmtMoney(processingFees)}</div></div>
+    <div class="stat-card"><div class="label">Total Income (range)</div><div class="value">${fmtMoney(income)}</div></div>
+    <div class="stat-card rust"><div class="label">Est. Bad Debt (Defaulted)</div><div class="value">${fmtMoney(Math.round(badDebt*100)/100)}</div></div>
+    <div class="stat-card ${netEstimate>=0?'emerald':'rust'}"><div class="label">Net Estimate (range)</div><div class="value">${fmtMoney(netEstimate)}</div></div>
+    <div class="stat-card amber"><div class="label">Capital Deployed (all-time)</div><div class="value">${fmtMoney(capitalDeployed)}</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Notes on this report</h2></div><div class="panel-body"><p class="small-muted">"Income" is interest actually collected plus processing fees on loans disbursed in range — not accrued/scheduled interest. "Capital Deployed" is all-time disbursed minus all-time collected. "Est. Bad Debt" only includes loans marked Defaulted via Loan Correction. This is a management estimate, not a formal accounting statement — for tax/audit purposes, have an accountant review it.</p></div></div>`;
+}
+
+/* =====================================================================
+   STAFF & ROLES
+   ===================================================================== */
+function screenStaff(){
+  if(!can('staff')) return `<div class="panel"><div class="panel-body">Admins only.</div></div>`;
+  return `
+  <div class="toolbar"><span class="spacer"></span><button class="btn btn-primary" data-nav="staff-form">+ New Staff</button></div>
+  <div class="panel"><div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>${staffList.map(u=>`<tr><td>${esc(u.name)}</td><td class="mono">${esc(u.username)}</td><td style="text-transform:capitalize;">${esc(u.role)}</td><td>${u.active?'<span class="stamp active">Active</span>':'<span class="stamp closed">Disabled</span>'}</td><td style="white-space:nowrap;"><button class="link-btn" data-nav="staff-form" data-id="${u.id}">Edit</button>${u.username!==ME.username?` &middot; <button class="link-btn" data-action="toggle-user" data-id="${u.id}">${u.active?'Disable':'Enable'}</button>`:''}</td></tr>`).join('')}</tbody>
+  </table></div></div>
+  <p class="small-muted">Passwords are hashed server-side with bcrypt and never stored in plain text.</p>`;
+}
+function screenStaffForm(params){
+  if(!can('staff')) return `<div class="panel"><div class="panel-body">Admins only.</div></div>`;
+  const u = params.id ? staffList.find(x=>x.id===params.id) : null;
+  return `
+  <div class="panel"><div class="panel-head"><h2>${u?'Edit Staff Member':'New Staff Member'}</h2></div><div class="panel-body">
+    <form id="staff-form" data-id="${u?u.id:''}">
+      <div class="form-grid">
+        <div class="field"><label>Full Name *</label><input name="name" required value="${esc(u?u.name:'')}"></div>
+        <div class="field"><label>Username *</label><input name="username" required value="${esc(u?u.username:'')}" ${u?'readonly':''}></div>
+        <div class="field"><label>Role *</label><select name="role" required>${['admin','manager','staff','agent'].map(r=>`<option ${u&&u.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+        <div class="field"><label>${u?'New Password (leave blank to keep current)':'Password *'}</label><input type="password" name="password" ${u?'':'required'}></div>
+      </div>
+      <p class="help">Roles: <strong>admin</strong> full access. <strong>manager</strong> everything except staff mgmt. <strong>staff</strong> CRM/loans/disbursement, no corrections. <strong>agent</strong> collection-only login — link this username to a Collection Agent record afterwards.</p>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Save</button><button class="btn btn-outline" type="button" data-nav="staff">Cancel</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   ACTIVITY LOG
+   ===================================================================== */
+function screenActivity(){
+  return `<div id="activity-root"><p class="small-muted">Loading…</p></div>`;
+}
+async function loadActivity(){
+  let rows; try{ rows = await api('/activity'); }catch(e){ rows=[]; }
+  const root = document.getElementById('activity-root');
+  if(!root) return;
+  root.innerHTML = `<div class="panel"><div class="panel-head"><h2>Activity Log</h2></div><div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+    <tbody>${rows.length?rows.map(a=>`<tr><td class="mono">${new Date(a.ts).toLocaleString('en-IN')}</td><td>${esc(a.user)}</td><td>${esc(a.action)}</td><td>${esc(a.details)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty-row">No activity recorded yet.</td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+/* =====================================================================
+   SETTINGS
+   ===================================================================== */
+function screenSettings(){
+  return `
+  <div class="panel"><div class="panel-head"><h2>Company &amp; Loan Defaults</h2></div><div class="panel-body">
+    <form id="settings-form">
+      <div class="form-grid">
+        <div class="field"><label>Company Name</label><input name="companyName" value="${esc(meta.companyName||'')}"></div>
+        <div class="field"><label>Default ROI (% per month, flat)</label><input type="number" min="0" step="0.01" name="defaultROI" value="${meta.defaultROI||4}"></div>
+        <div class="field"><label>Late Penalty (% per day on overdue amount)</label><input type="number" min="0" step="0.01" name="penaltyRatePerDay" value="${meta.penaltyRatePerDay||0}"></div>
+      </div>
+      <p class="help">Penalty is auto-calculated on unpaid instalment amounts, per day past due. Leave at 0 to disable.</p>
+      ${can('backup') ? `<div class="form-actions"><button class="btn btn-primary" type="submit">Save</button></div>` : `<p class="small-muted">Only admins/managers can change these.</p>`}
+    </form>
+  </div></div>
+  <div class="panel"><div class="panel-head"><h2>Change My Password</h2></div><div class="panel-body">
+    <form id="pw-form">
+      <div class="field"><label>New Password</label><input type="password" name="password" required minlength="4"></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Update Password</button></div>
+    </form>
+  </div></div>`;
+}
+
+/* =====================================================================
+   Event handling
+   ===================================================================== */
+function attachAfterRender(){
+  document.body.removeEventListener('click', globalClickHandler);
+  document.body.addEventListener('click', globalClickHandler);
+  if(!TOKEN || !ME){
+    const f = document.getElementById('login-form');
+    if(f) f.addEventListener('submit', handleLogin);
+    return;
+  }
+  markConn(!!(socket && socket.connected));
+  renderContent();
+}
+
+function globalClickHandler(e){
+  const navBtn = e.target.closest('[data-nav]');
+  if(navBtn){
+    e.preventDefault();
+    const screen = navBtn.getAttribute('data-nav');
+    const params = {};
+    if(navBtn.dataset.id) params.id = navBtn.dataset.id;
+    if(navBtn.dataset.customer) params.customer = navBtn.dataset.customer;
+    if(navBtn.dataset.loan) params.loan = navBtn.dataset.loan;
+    if(navBtn.dataset.tab) params.tab = navBtn.dataset.tab;
+    nav(screen, params);
+    return;
+  }
+  const actionBtn = e.target.closest('[data-action]');
+  if(actionBtn){ e.preventDefault(); handleAction(actionBtn); }
+}
+
+async function handleAction(btn){
+  const action = btn.getAttribute('data-action');
+  try{
+    if(action==='logout'){ TOKEN=null; ME=null; MY_AGENT=null; localStorage.removeItem('ledger_live_token'); if(socket) socket.disconnect(); render(); return; }
+    if(action==='toggle-more'){ MORE_OPEN = !MORE_OPEN; render(); return; }
+    if(action==='print-agreement'){ toast('Agreement printing is not yet ported to the live version — use the offline app for now, or ask to have it added.', true); return; }
+
+    if(action==='mark-emi' || action==='edit-emi'){
+      const loan = loans.find(l=>l.id===btn.dataset.loan);
+      const row = loan.schedule.find(r=>r.no==btn.dataset.no);
+      openPaymentModal(loan, row);
+      return;
+    }
+    if(action==='unmark-emi'){
+      const loan = loans.find(l=>l.id===btn.dataset.loan);
+      await api(`/loans/${loan.id}/schedule/${btn.dataset.no}/reset`, { method:'POST' });
+      loans = await api('/loans');
+      renderContent();
+      toast('Instalment reset.');
+      return;
+    }
+    if(action==='assign-agent'){ openAssignAgentModal(btn.dataset.id); return; }
+    if(action==='log-activity'){ openLogActivityModal(btn.dataset.id, btn.dataset.no || null); return; }
+    if(action==='view-inst-notes'){ openInstallmentNotesModal(btn.dataset.loan, btn.dataset.no); return; }
+    if(action==='toggle-user'){
+      await api(`/staff/${btn.dataset.id}/toggle`, { method:'POST' });
+      staffList = await api('/staff');
+      renderContent();
+      toast('Staff member updated.');
+      return;
+    }
+    if(action==='delete-loan'){
+      openConfirm('Delete this loan?','This will permanently remove the loan and its disbursement history. This cannot be undone.', async ()=>{
+        await api(`/loans/${btn.dataset.id}`, { method:'DELETE' });
+        loans = await api('/loans'); disbursements = await api('/disbursements');
+        nav('loans'); toast('Loan deleted.');
+      });
+      return;
+    }
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleLogin(e){
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const errEl = document.getElementById('login-error');
+  try{
+    const r = await api('/auth/login', { method:'POST', body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }) });
+    TOKEN = r.token; localStorage.setItem('ledger_live_token', TOKEN);
+    ME = r.user; MY_AGENT = r.agent || null;
+    await refetchCore();
+    connectSocket();
+    nav(ME.role==='agent' ? 'collections' : 'dashboard');
+  }catch(err){
+    errEl.innerHTML = `<div class="login-error">${esc(err.message)}</div>`;
+  }
+}
+
+function attachFormHandlers(){
+  const cf = document.getElementById('customer-form'); if(cf) cf.addEventListener('submit', handleCustomerSubmit);
+  const lf = document.getElementById('loan-form'); if(lf) lf.addEventListener('submit', handleLoanSubmit);
+  const df = document.getElementById('disbursement-form'); if(df) df.addEventListener('submit', handleDisbursementSubmit);
+  const crf = document.getElementById('correction-form'); if(crf) crf.addEventListener('submit', handleCorrectionSubmit);
+  const tuf = document.getElementById('topup-form'); if(tuf) tuf.addEventListener('submit', handleTopupSubmit);
+  const sf = document.getElementById('staff-form'); if(sf) sf.addEventListener('submit', handleStaffSubmit);
+  const bf = document.getElementById('branch-form'); if(bf) bf.addEventListener('submit', handleBranchSubmit);
+  const agf = document.getElementById('agent-form'); if(agf) agf.addEventListener('submit', handleAgentSubmit);
+  const setf = document.getElementById('settings-form'); if(setf) setf.addEventListener('submit', handleSettingsSubmit);
+  const pwf = document.getElementById('pw-form'); if(pwf) pwf.addEventListener('submit', handlePasswordSubmit);
+
+  const custSearch = document.getElementById('cust-search');
+  if(custSearch) custSearch.addEventListener('input', debounce(()=>nav('customers',{q:custSearch.value, branch:(document.getElementById('cust-branch-filter')||{}).value}), 250));
+  const custBranchFilter = document.getElementById('cust-branch-filter');
+  if(custBranchFilter) custBranchFilter.addEventListener('change', ()=>nav('customers',{q:(document.getElementById('cust-search')||{}).value, branch:custBranchFilter.value}));
+
+  const loanSearch = document.getElementById('loan-search');
+  if(loanSearch) loanSearch.addEventListener('input', debounce(()=>nav('loans',{tab:'list', q:loanSearch.value, branch:(document.getElementById('loan-branch-filter')||{}).value}), 250));
+  const loanBranchFilter = document.getElementById('loan-branch-filter');
+  if(loanBranchFilter) loanBranchFilter.addEventListener('change', ()=>nav('loans',{tab:'list', q:(document.getElementById('loan-search')||{}).value, branch:loanBranchFilter.value}));
+
+  const collAgentFilter = document.getElementById('collections-agent-filter');
+  if(collAgentFilter) collAgentFilter.addEventListener('change', ()=>nav('collections',{tab:'loans', agent:collAgentFilter.value}));
+
+  const repFrom = document.getElementById('rep-from'), repTo = document.getElementById('rep-to');
+  const repClear = document.getElementById('rep-clear'), repDownload = document.getElementById('rep-download');
+  function repNav(){ nav('reports', { tab: VIEW.params.tab||'disbursement', from:(document.getElementById('rep-from')||{}).value||'', to:(document.getElementById('rep-to')||{}).value||'' }); }
+  if(repFrom) repFrom.addEventListener('change', repNav);
+  if(repTo) repTo.addEventListener('change', repNav);
+  if(repClear) repClear.addEventListener('click', ()=>nav('reports',{tab:VIEW.params.tab||'disbursement'}));
+  if(repDownload) repDownload.addEventListener('click', ()=>{ const r = window.__repCSV; if(r) downloadCSV(r.filename, r.headers, r.rows); });
+
+  // EMI calculator (live, no server round-trip needed for the preview math)
+  const calcPrincipal = document.getElementById('calc-principal'), calcRoi = document.getElementById('calc-roi'), calcTenure = document.getElementById('calc-tenure');
+  function recalcEMI(){
+    const p = parseFloat(calcPrincipal.value)||0, r = parseFloat(calcRoi.value)||0, n = parseInt(calcTenure.value,10)||1;
+    const totalInterest = p*(r/100)*n, totalPayable = p+totalInterest, emi = totalPayable/n;
+    document.getElementById('calc-result').innerHTML = `
+      <div class="stat-card"><div class="label">EMI / Month</div><div class="value">${fmtMoney(emi)}</div></div>
+      <div class="stat-card amber"><div class="label">Total Interest</div><div class="value">${fmtMoney(totalInterest)}</div></div>
+      <div class="stat-card"><div class="label">Total Payable</div><div class="value">${fmtMoney(totalPayable)}</div></div>`;
+  }
+  if(calcPrincipal){ [calcPrincipal,calcRoi,calcTenure].forEach(el=>el.addEventListener('input', recalcEMI)); recalcEMI();
+    document.getElementById('calc-use-btn').addEventListener('click', ()=>nav('loan-form', { principal: calcPrincipal.value, roi: calcRoi.value, tenure: calcTenure.value }));
+  }
+}
+
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+function formToObj(form){ const fd = new FormData(form); const o = {}; for(const [k,v] of fd.entries()) o[k]=v; return o; }
+
+async function handleCustomerSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    if(id) await api(`/customers/${id}`, { method:'PUT', body: JSON.stringify(o) });
+    else await api('/customers', { method:'POST', body: JSON.stringify(o) });
+    customers = await api('/customers');
+    nav('customers'); toast('Customer saved.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleLoanSubmit(e){
+  e.preventDefault();
+  const o = formToObj(e.target);
+  try{
+    const loan = await api('/loans', { method:'POST', body: JSON.stringify(o) });
+    loans = await api('/loans');
+    nav('loan-detail', {id: loan.id});
+    toast('Loan created. Record a disbursement to activate it.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleDisbursementSubmit(e){
+  e.preventDefault();
+  const o = formToObj(e.target);
+  try{
+    await api(`/loans/${o.loanId}/disburse`, { method:'POST', body: JSON.stringify(o) });
+    loans = await api('/loans'); disbursements = await api('/disbursements');
+    nav('loan-detail', {id:o.loanId, tab:'disbursement'});
+    toast('Disbursement recorded.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleCorrectionSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    await api(`/loans/${id}`, { method:'PUT', body: JSON.stringify(o) });
+    loans = await api('/loans');
+    nav('loan-detail', {id});
+    toast('Correction saved.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleTopupSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    const r = await api(`/loans/${id}/topup`, { method:'POST', body: JSON.stringify(o) });
+    loans = await api('/loans'); disbursements = await api('/disbursements');
+    nav('loan-detail', { id: r.newLoan ? r.newLoan.id : id });
+    toast('Top-up processed.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleStaffSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    if(id) await api(`/staff/${id}`, { method:'PUT', body: JSON.stringify(o) });
+    else await api('/staff', { method:'POST', body: JSON.stringify(o) });
+    staffList = await api('/staff');
+    nav('staff'); toast('Staff saved.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleBranchSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    if(id) await api(`/branches/${id}`, { method:'PUT', body: JSON.stringify(o) });
+    else await api('/branches', { method:'POST', body: JSON.stringify(o) });
+    branches = await api('/branches');
+    nav('branches'); toast('Branch saved.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleAgentSubmit(e){
+  e.preventDefault();
+  const id = e.target.dataset.id, o = formToObj(e.target);
+  try{
+    if(id) await api(`/agents/${id}`, { method:'PUT', body: JSON.stringify(o) });
+    else await api('/agents', { method:'POST', body: JSON.stringify(o) });
+    collectionAgents = await api('/agents');
+    nav('agents'); toast('Agent saved.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handleSettingsSubmit(e){
+  e.preventDefault();
+  const o = formToObj(e.target);
+  try{
+    meta = await api('/meta', { method:'PUT', body: JSON.stringify(o) });
+    render(); toast('Settings updated.');
+  }catch(err){ toast(err.message, true); }
+}
+
+async function handlePasswordSubmit(e){
+  e.preventDefault();
+  const o = formToObj(e.target);
+  try{
+    await api(`/staff/${ME.id}`, { method:'PUT', body: JSON.stringify({ name: ME.name, role: ME.role, password: o.password }) });
+    e.target.reset();
+    toast('Password updated.');
+  }catch(err){ toast(err.message, true); }
+}
+
+function downloadCSV(filename, headers, rows){
+  function esc2(v){ const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+  const lines = [headers.map(esc2).join(',')].concat(rows.map(r=>r.map(esc2).join(',')));
+  const blob = new Blob(['\uFEFF'+lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Report downloaded.');
+}
+
+/* ---------------- Payment (repayment) modal ---------------- */
+function openPaymentModal(loan, row){
+  const remainingPrincipal = Math.max(0, Math.round((row.principal-(row.paidPrincipal||0))*100)/100);
+  const remainingInterest = Math.max(0, Math.round((row.interest-(row.paidInterest||0))*100)/100);
+  const remainingTotal = Math.max(0, Math.round((remainingPrincipal+remainingInterest)*100)/100);
+  const hasPriorPayment = (row.paidAmount||0) > 0;
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-bg';
+  wrap.innerHTML = `
+    <div class="modal-card">
+      <h3>${hasPriorPayment?'Add / Edit Repayment':'Record Repayment'} — Instalment #${row.no}</h3>
+      <p class="small-muted">Scheduled EMI: ${fmtMoney(row.emi)} (Principal ${fmtMoney(row.principal)} + Interest ${fmtMoney(row.interest)}) · Due ${fmtDate(row.dueDate)}</p>
+      ${hasPriorPayment ? `<p class="small-muted">Already recorded: Principal ${fmtMoney(row.paidPrincipal||0)} + Interest ${fmtMoney(row.paidInterest||0)} = ${fmtMoney(row.paidAmount||0)}. Remaining: ${fmtMoney(remainingTotal)}.</p>` : ''}
+      <div class="field"><label>Apply Payment To</label><select id="pm-component">
+        <option value="both">Both — Principal + Interest</option><option value="principal">Principal Only</option><option value="interest">Interest Only</option>
+      </select></div>
+      <div class="field"><label>Amount</label><select id="pm-amount-mode">
+        <option value="scheduled">Use remaining scheduled amount</option><option value="manual">Enter manual amount</option>
+      </select></div>
+      <div class="field" id="pm-manual-wrap" style="display:none;"><label>Manual Amount (₹)</label><input type="number" min="0" step="0.01" id="pm-manual-amount"><p class="help">For "Both", a manual amount is applied to interest first, then principal.</p></div>
+      <div class="field"><label>Payment Date</label><input type="date" id="pm-date" value="${todayDateStr()}"></div>
+      <div class="field"><label>Remarks</label><textarea id="pm-remarks" rows="2" placeholder="e.g. Paid in cash, partial payment, promised balance next week…"></textarea></div>
+      <div class="modal-actions">
+        ${hasPriorPayment ? `<button class="btn btn-danger-outline" id="pm-reset" style="margin-right:auto;">Reset instalment</button>` : ''}
+        <button class="btn btn-outline" id="pm-cancel">Cancel</button>
+        <button class="btn btn-primary" id="pm-save">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const componentSel = wrap.querySelector('#pm-component'), amountModeSel = wrap.querySelector('#pm-amount-mode');
+  const manualWrap = wrap.querySelector('#pm-manual-wrap'), manualInput = wrap.querySelector('#pm-manual-amount');
+  function syncManualDefault(){ const comp = componentSel.value; manualInput.value = comp==='principal'?remainingPrincipal:comp==='interest'?remainingInterest:remainingTotal; }
+  amountModeSel.addEventListener('change', ()=>{ manualWrap.style.display = amountModeSel.value==='manual'?'block':'none'; if(amountModeSel.value==='manual') syncManualDefault(); });
+  componentSel.addEventListener('change', ()=>{ if(amountModeSel.value==='manual') syncManualDefault(); });
+  wrap.querySelector('#pm-cancel').onclick = ()=>wrap.remove();
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) wrap.remove(); });
+  const resetBtn = wrap.querySelector('#pm-reset');
+  if(resetBtn) resetBtn.onclick = async ()=>{
+    try{ await api(`/loans/${loan.id}/schedule/${row.no}/reset`, { method:'POST' }); loans = await api('/loans'); wrap.remove(); renderContent(); toast('Instalment reset.'); }
+    catch(err){ toast(err.message, true); }
+  };
+  wrap.querySelector('#pm-save').onclick = async ()=>{
+    const body = { instNo: row.no, component: componentSel.value, amountMode: amountModeSel.value, manualAmount: manualInput.value, date: wrap.querySelector('#pm-date').value, remarks: wrap.querySelector('#pm-remarks').value.trim() };
+    try{ await api(`/loans/${loan.id}/payments`, { method:'POST', body: JSON.stringify(body) }); loans = await api('/loans'); wrap.remove(); renderContent(); toast('Repayment saved.'); }
+    catch(err){ toast(err.message, true); }
+  };
+}
+
+/* ---------------- Assign collection agent modal ---------------- */
+function openAssignAgentModal(loanId){
+  const loan = loans.find(l=>l.id===loanId); if(!loan) return;
+  const wrap = document.createElement('div'); wrap.className = 'modal-bg';
+  wrap.innerHTML = `<div class="modal-card"><h3>Assign Collection Agent</h3>
+    <div class="field"><label>Agent</label><select id="am-agent"><option value="">Unassigned</option>
+      ${collectionAgents.map(a=>`<option value="${a.id}" ${loan.agentId===a.id?'selected':''}>${esc(a.name)}${a.phone?(' — '+esc(a.phone)):''}</option>`).join('')}
+    </select></div>
+    ${!collectionAgents.length?`<p class="small-muted">No agents yet — add one from Collections → Manage Agents.</p>`:''}
+    <div class="modal-actions"><button class="btn btn-outline" id="am-cancel">Cancel</button><button class="btn btn-primary" id="am-save">Save</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#am-cancel').onclick = ()=>wrap.remove();
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) wrap.remove(); });
+  wrap.querySelector('#am-save').onclick = async ()=>{
+    try{ await api(`/loans/${loan.id}/assign-agent`, { method:'POST', body: JSON.stringify({ agentId: wrap.querySelector('#am-agent').value||null }) }); loans = await api('/loans'); wrap.remove(); renderContent(); toast('Agent updated.'); }
+    catch(err){ toast(err.message, true); }
+  };
+}
+
+/* ---------------- Log collection activity modal ---------------- */
+function openLogActivityModal(loanId, presetNo){
+  const loan = loans.find(l=>l.id===loanId); if(!loan) return;
+  const openInstalments = (loan.schedule||[]).filter(r=>r.status!=='Paid');
+  const wrap = document.createElement('div'); wrap.className = 'modal-bg';
+  wrap.innerHTML = `<div class="modal-card"><h3>Log Collection Activity</h3>
+    <div class="field"><label>Instalment</label><select id="la-inst"><option value="">General (not tied to one instalment)</option>
+      ${openInstalments.map(r=>`<option value="${r.no}" ${String(presetNo)===String(r.no)?'selected':''}>#${r.no} — due ${fmtDate(r.dueDate)} — ${fmtMoney(r.emi)}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Date</label><input type="date" id="la-date" value="${todayDateStr()}"></div>
+    <div class="field"><label>Outcome</label><select id="la-outcome">${['Promised to pay','Paid','No response','Refused','Other'].map(o=>`<option>${o}</option>`).join('')}</select></div>
+    <div class="field"><label>Note</label><textarea id="la-note" rows="2" placeholder="e.g. Visited shop, customer promised to pay by Friday"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-outline" id="la-cancel">Cancel</button><button class="btn btn-primary" id="la-save">Save</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#la-cancel').onclick = ()=>wrap.remove();
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) wrap.remove(); });
+  wrap.querySelector('#la-save').onclick = async ()=>{
+    const body = { date: wrap.querySelector('#la-date').value, outcome: wrap.querySelector('#la-outcome').value, note: wrap.querySelector('#la-note').value.trim(), instNo: wrap.querySelector('#la-inst').value||null };
+    try{ await api(`/loans/${loan.id}/collection-log`, { method:'POST', body: JSON.stringify(body) }); loans = await api('/loans'); wrap.remove(); renderContent(); toast('Activity logged.'); }
+    catch(err){ toast(err.message, true); }
+  };
+}
+
+/* ---------------- Installment notes/timeline modal ---------------- */
+function openInstallmentNotesModal(loanId, no){
+  const loan = loans.find(l=>l.id===loanId); if(!loan) return;
+  const row = (loan.schedule||[]).find(r=>String(r.no)===String(no)); if(!row) return;
+  const paymentEntries = (row.remarksLog||[]).map(e=>({date:e.date, kind:'Payment', label:`${e.component==='both'?'Principal+Interest':(e.component==='principal'?'Principal':'Interest')} ${fmtMoney(e.amount)}`, note:e.note, by:e.by}));
+  const activityEntries = (loan.collectionLog||[]).filter(e=>String(e.instNo)===String(no)).map(e=>({date:e.date, kind:'Activity', label:e.outcome, note:e.note, by:e.by}));
+  const timeline = [...paymentEntries, ...activityEntries].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const wrap = document.createElement('div'); wrap.className = 'modal-bg';
+  wrap.innerHTML = `<div class="modal-card" style="max-width:560px;"><h3>Instalment #${row.no} — Activity &amp; Notes</h3>
+    <p class="small-muted">Due ${fmtDate(row.dueDate)} · EMI ${fmtMoney(row.emi)} · Status ${row.status}</p>
+    <div class="table-wrap" style="max-height:320px;overflow-y:auto;"><table><thead><tr><th>Date</th><th>Type</th><th>Detail</th><th>By</th></tr></thead>
+    <tbody>${timeline.length?timeline.map(t=>`<tr><td class="mono">${fmtDate(t.date)}</td><td><span class="stamp ${t.kind==='Payment'?'paid':'pending'}">${t.kind}</span></td><td>${esc(t.label)}${t.note?`<div class="small-muted">${esc(t.note)}</div>`:''}</td><td>${esc(t.by||'')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty-row">No activity or payment notes yet.</td></tr>`}</tbody></table></div>
+    <div class="modal-actions"><button class="btn btn-outline" id="in-close">Close</button><button class="btn btn-primary" id="in-add">+ Add comment / activity</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#in-close').onclick = ()=>wrap.remove();
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) wrap.remove(); });
+  wrap.querySelector('#in-add').onclick = ()=>{ wrap.remove(); openLogActivityModal(loan.id, row.no); };
+}
+
+/* ---------------- Confirm modal ---------------- */
+function openConfirm(title, body, onYes){
+  const wrap = document.createElement('div'); wrap.className = 'modal-bg';
+  wrap.innerHTML = `<div class="modal-card"><h3>${esc(title)}</h3><p>${esc(body)}</p>
+    <div class="modal-actions"><button class="btn btn-outline" id="modal-cancel">Cancel</button><button class="btn btn-danger" id="modal-yes">Yes, continue</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#modal-cancel').onclick = ()=>wrap.remove();
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) wrap.remove(); });
+  wrap.querySelector('#modal-yes').onclick = async ()=>{ wrap.remove(); await onYes(); };
+}
+
+/* ---------------- Boot ---------------- */
+async function boot(){
+  if(!TOKEN){ render(); return; }
+  try{
+    const me = await api('/auth/me');
+    ME = me.user; MY_AGENT = me.agent || null;
+    await refetchCore();
+    connectSocket();
+    render();
+  }catch(e){
+    TOKEN = null; ME = null; localStorage.removeItem('ledger_live_token'); render();
+  }
+}
+boot();
+</script>
+</body>
+</html>
